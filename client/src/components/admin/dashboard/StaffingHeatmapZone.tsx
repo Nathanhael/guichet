@@ -3,18 +3,22 @@ import { useState } from 'react';
 /**
  * Dashboard Z3 — Staffing fit.
  *
- * Two stacked visualizations driven by `dashboard.getStaffingHeatmap`:
+ * Two stacked visualizations driven by `dashboard.getStaffingHeatmap`,
+ * plus an auto-derived insights row that surfaces the busiest slot and
+ * the worst staffing-fit slot so admins don't have to scan 168 cells.
  *
- *   1. Today-vs-typical strip — 24 hourly slots showing the count of
+ *   1. Today vs. typical strip — 24 hourly slots showing the count of
  *      tickets that have already arrived today (accent) overlaid on the
  *      average count for the same hour-of-week across the window (muted).
- *      A vertical "now" marker shows the current local hour.
+ *      The current local hour is outlined.
  *
  *   2. Weekday × hour heatmap — for each (dow, hour) cell, the average
  *      number of tickets that arrived in that hour over the past
  *      `daysCollected` days. Darker = busier. Today's weekday row is
- *      highlighted. Optional staff-coverage overlay shows the average
- *      number of agents online in each cell when toggled on.
+ *      highlighted. Cells where the per-hour ticket:staff ratio crosses
+ *      a "thin coverage" threshold are outlined in red so understaffed
+ *      slots stand out at a glance. Optional badge shows the average
+ *      staff online count in each cell.
  *
  * Empty / warm-up rules from spec §7:
  *   - daysCollected === 0 (loading or fresh partner) -> generic empty
@@ -47,12 +51,69 @@ const WEEK_ORDER_NO_WEEKENDS = [1, 2, 3, 4, 5];
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // Label gutter: w-10 (40px) + gap-[2px] (2px) = 42px to align strip + axis with cells.
 const GUTTER_PX = 42;
+// Tickets-per-staff ratio above which a cell is flagged as understaffed.
+// Anchored to "1 agent juggling more than 2 incoming tickets per hour"
+// — empirically thin coverage even allowing for parallel chats.
+const THIN_COVERAGE_RATIO = 2;
+// Below this hourly arrival rate, ratios are noisy (rounding artefacts on
+// rare slots) so we don't flag understaffing.
+const MIN_TICKETS_FOR_FIT_FLAG = 0.5;
 
 function formatHour(h: number): string {
   if (h === 0) return '12 AM';
   if (h === 12) return 'noon';
   if (h < 12) return `${h} AM`;
   return `${h - 12} PM`;
+}
+
+function fmt(n: number): string {
+  return n < 10 ? n.toFixed(1).replace(/\.0$/, '') : Math.round(n).toString();
+}
+
+function getLocalTz(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+  } catch {
+    return 'local';
+  }
+}
+
+interface CellInsight {
+  dow: number;
+  hour: number;
+  tickets: number;
+  staff?: number;
+  ratio?: number;
+}
+
+function deriveInsights(
+  cells: StaffingHeatmapData['heatmap'],
+  visibleDows: number[],
+): { busiest?: CellInsight; thinnest?: CellInsight; thinCount: number } {
+  const dowSet = new Set(visibleDows);
+  const inWindow = cells.filter((c) => dowSet.has(c.dow));
+  if (inWindow.length === 0) return { thinCount: 0 };
+
+  let busiest: CellInsight | undefined;
+  let thinnest: CellInsight | undefined;
+  let thinCount = 0;
+  for (const c of inWindow) {
+    if (!busiest || c.tickets > busiest.tickets) {
+      busiest = { dow: c.dow, hour: c.hour, tickets: c.tickets, staff: c.staff };
+    }
+    if (
+      c.staff !== undefined &&
+      c.staff > 0 &&
+      c.tickets >= MIN_TICKETS_FOR_FIT_FLAG
+    ) {
+      const ratio = c.tickets / c.staff;
+      if (ratio > THIN_COVERAGE_RATIO) thinCount += 1;
+      if (!thinnest || ratio > (thinnest.ratio ?? 0)) {
+        thinnest = { dow: c.dow, hour: c.hour, tickets: c.tickets, staff: c.staff, ratio };
+      }
+    }
+  }
+  return { busiest, thinnest, thinCount };
 }
 
 export function StaffingHeatmapZone({
@@ -62,7 +123,7 @@ export function StaffingHeatmapZone({
   onRetry,
   excludeWeekends,
 }: StaffingHeatmapZoneProps) {
-  const [showStaffOverlay, setShowStaffOverlay] = useState(false);
+  const [showStaffNumbers, setShowStaffNumbers] = useState(true);
 
   if (loading) {
     return (
@@ -110,6 +171,7 @@ export function StaffingHeatmapZone({
 
   const maxTickets = data.heatmap.reduce((m, c) => Math.max(m, c.tickets), 0);
   const visibleDows = excludeWeekends ? WEEK_ORDER_NO_WEEKENDS : WEEK_ORDER_FULL;
+  const insights = deriveInsights(data.heatmap, visibleDows);
 
   const stripMax = data.todayVsTypical.reduce(
     (m, s) => Math.max(m, s.todayCount, s.typicalCount),
@@ -120,26 +182,62 @@ export function StaffingHeatmapZone({
   const todayDow = now.getDay();
   const currentHour = now.getHours();
   const todayLongName = DOW_LABELS_LONG[todayDow];
+  const tz = getLocalTz();
 
   return (
     <div data-testid="staffing-heatmap-root" className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[12px] text-[var(--color-ink-muted)] leading-snug max-w-prose">
           Average ticket arrivals by weekday and hour over the last {data.daysCollected} days.
-          Darker cells = busier slots — use this to align staff coverage with demand.
+          Darker cells = busier slots. <span className="text-[var(--color-danger,#ef4444)]">Red outline</span> = thin coverage (more than {THIN_COVERAGE_RATIO} tickets per staff/hour).
+          <span className="block mt-0.5 text-[10.5px] opacity-80">Times in {tz}.</span>
         </p>
         {hasStaffData && (
           <button
             type="button"
-            aria-pressed={showStaffOverlay}
-            onClick={() => setShowStaffOverlay((v) => !v)}
-            title="Show the average number of support staff online in each hour"
+            aria-pressed={showStaffNumbers}
+            onClick={() => setShowStaffNumbers((v) => !v)}
+            title="Show the average number of support staff online inside each cell"
             className="shrink-0 h-7 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] text-[var(--color-ink)] aria-pressed:bg-[var(--color-accent)] aria-pressed:text-white"
           >
-            {showStaffOverlay ? 'Hide staff coverage' : 'Show staff coverage'}
+            {showStaffNumbers ? 'Hide staff numbers' : 'Show staff numbers'}
           </button>
         )}
       </div>
+
+      {(insights.busiest || insights.thinnest) && (
+        <div
+          data-testid="staffing-insights"
+          className="flex flex-wrap gap-2 text-[11px]"
+        >
+          {insights.busiest && (
+            <InsightChip
+              tone="neutral"
+              label="Busiest hour"
+              value={`${DOW_LABELS_FULL[insights.busiest.dow]} ${formatHour(insights.busiest.hour)}`}
+              detail={`${fmt(insights.busiest.tickets)} tickets/h${
+                insights.busiest.staff !== undefined ? ` · ${fmt(insights.busiest.staff)} staff` : ''
+              }`}
+            />
+          )}
+          {insights.thinnest && insights.thinnest.ratio !== undefined && insights.thinnest.ratio > THIN_COVERAGE_RATIO && (
+            <InsightChip
+              tone="warn"
+              label="Thinnest coverage"
+              value={`${DOW_LABELS_FULL[insights.thinnest.dow]} ${formatHour(insights.thinnest.hour)}`}
+              detail={`${fmt(insights.thinnest.tickets)} tickets vs ${fmt(insights.thinnest.staff ?? 0)} staff (${insights.thinnest.ratio.toFixed(1)}× ratio)`}
+            />
+          )}
+          {hasStaffData && insights.thinCount > 1 && (
+            <InsightChip
+              tone="muted"
+              label="Slots flagged"
+              value={`${insights.thinCount} understaffed hours`}
+              detail="across the visible week"
+            />
+          )}
+        </div>
+      )}
 
       <section aria-label="Today vs typical arrivals">
         <header className="flex items-center justify-between mb-1">
@@ -173,7 +271,7 @@ export function StaffingHeatmapZone({
                   data-today={slot.todayCount}
                   data-typical={slot.typicalCount}
                   className={`flex-1 relative h-full ${isCurrentHour ? 'outline outline-1 outline-[var(--color-accent)] outline-offset-[-1px] rounded-sm' : ''}`}
-                  title={`${formatHour(slot.hour)} — today ${slot.todayCount.toFixed(1)}, typical ${slot.typicalCount.toFixed(1)}`}
+                  title={`${formatHour(slot.hour)} — today ${fmt(slot.todayCount)}, typical ${fmt(slot.typicalCount)}`}
                 >
                   <div
                     className="absolute bottom-0 left-0 right-0 bg-[var(--color-ink-muted)] opacity-30 rounded-t-sm"
@@ -200,10 +298,10 @@ export function StaffingHeatmapZone({
       <section aria-label="Weekday × hour heatmap">
         <header className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-ink-muted)]">
-            Average tickets per hour
-            {showStaffOverlay && hasStaffData ? ' · staff count overlay' : ''}
+            Typical demand pattern
+            {hasStaffData ? ` · ${showStaffNumbers ? 'staff per hour' : 'tickets per hour'}` : ''}
           </span>
-          <HeatmapLegend max={maxTickets} />
+          <HeatmapLegend max={maxTickets} hasStaffData={hasStaffData} />
         </header>
         <div data-testid="staffing-heatmap-grid" className="flex flex-col gap-[2px]">
           {visibleDows.map((dow) => {
@@ -225,28 +323,42 @@ export function StaffingHeatmapZone({
                   const tickets = cellIndex.get(`${dow}:${hour}`) ?? 0;
                   const staff = staffIndex.get(`${dow}:${hour}`);
                   const intensity = maxTickets > 0 ? tickets / maxTickets : 0;
-                  const showBadge = showStaffOverlay && staff !== undefined;
+                  const ratio =
+                    staff !== undefined && staff > 0 && tickets >= MIN_TICKETS_FOR_FIT_FLAG
+                      ? tickets / staff
+                      : null;
+                  const isThin = ratio !== null && ratio > THIN_COVERAGE_RATIO;
+                  const showBadge = showStaffNumbers && staff !== undefined;
+                  const ringClass = isThin
+                    ? 'ring-1 ring-[var(--color-danger,#ef4444)] ring-inset'
+                    : '';
                   return (
                     <div
                       key={hour}
                       data-testid={`staffing-cell-${dow}-${hour}`}
                       data-tickets={tickets}
+                      data-staff={staff ?? ''}
+                      data-thin={isThin}
                       data-intensity={intensity}
-                      className="flex-1 h-5 rounded-sm flex items-center justify-center"
+                      className={`flex-1 h-5 rounded-sm flex items-center justify-center ${ringClass}`}
                       style={{
                         backgroundColor:
                           intensity > 0
                             ? `color-mix(in srgb, var(--color-accent) ${Math.round(intensity * 100)}%, transparent)`
                             : 'var(--color-bg-elevated)',
                       }}
-                      title={`${DOW_LABELS_LONG[dow]} ${formatHour(hour)} — ${tickets.toFixed(1)} tickets/h${staff !== undefined ? `, ${staff.toFixed(1)} staff online` : ''}`}
+                      title={
+                        `${DOW_LABELS_LONG[dow]} ${formatHour(hour)} — ${fmt(tickets)} tickets/h` +
+                        (staff !== undefined ? `, ${fmt(staff)} staff` : '') +
+                        (isThin ? ` · thin coverage (${ratio!.toFixed(1)}× ratio)` : '')
+                      }
                     >
                       {showBadge && (
                         <span
                           data-testid={`staffing-cell-staff-${dow}-${hour}`}
                           className="text-[9px] font-medium text-[var(--color-ink)] leading-none"
                         >
-                          {staff < 10 ? staff.toFixed(1).replace(/\.0$/, '') : Math.round(staff)}
+                          {fmt(staff)}
                         </span>
                       )}
                     </div>
@@ -271,24 +383,58 @@ export function StaffingHeatmapZone({
   );
 }
 
-function HeatmapLegend({ max }: { max: number }) {
+interface InsightChipProps {
+  tone: 'neutral' | 'warn' | 'muted';
+  label: string;
+  value: string;
+  detail: string;
+}
+
+function InsightChip({ tone, label, value, detail }: InsightChipProps) {
+  const toneClass =
+    tone === 'warn'
+      ? 'border-[var(--color-danger,#ef4444)] text-[var(--color-ink)]'
+      : tone === 'muted'
+      ? 'border-[var(--color-border)] text-[var(--color-ink-muted)]'
+      : 'border-[var(--color-border)] text-[var(--color-ink)]';
+  return (
+    <div className={`inline-flex items-center gap-2 rounded-[var(--radius-btn)] border px-2.5 py-1 ${toneClass}`}>
+      <span className="text-[10px] uppercase tracking-wide text-[var(--color-ink-muted)]">{label}</span>
+      <span className="font-medium">{value}</span>
+      <span className="text-[var(--color-ink-muted)]">· {detail}</span>
+    </div>
+  );
+}
+
+function HeatmapLegend({ max, hasStaffData }: { max: number; hasStaffData: boolean }) {
   if (max <= 0) return null;
   const stops = [0.15, 0.4, 0.65, 0.9];
   return (
-    <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-ink-muted)]">
-      <span>0</span>
-      <div className="flex gap-[1px]">
-        {stops.map((s) => (
-          <span
-            key={s}
-            className="inline-block w-3 h-3 rounded-sm"
-            style={{
-              backgroundColor: `color-mix(in srgb, var(--color-accent) ${Math.round(s * 100)}%, transparent)`,
-            }}
-          />
-        ))}
+    <div className="flex items-center gap-3 text-[10px] text-[var(--color-ink-muted)]">
+      <div className="flex items-center gap-1.5">
+        <span>0</span>
+        <div className="flex gap-[1px]">
+          {stops.map((s) => (
+            <span
+              key={s}
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{
+                backgroundColor: `color-mix(in srgb, var(--color-accent) ${Math.round(s * 100)}%, transparent)`,
+              }}
+            />
+          ))}
+        </div>
+        <span>{fmt(max)}/h</span>
       </div>
-      <span>{max.toFixed(1)}/h</span>
+      {hasStaffData && (
+        <span className="flex items-center gap-1">
+          <span
+            aria-hidden
+            className="inline-block w-3 h-3 rounded-sm ring-1 ring-[var(--color-danger,#ef4444)] ring-inset bg-[var(--color-bg-elevated)]"
+          />
+          thin
+        </span>
+      )}
     </div>
   );
 }
