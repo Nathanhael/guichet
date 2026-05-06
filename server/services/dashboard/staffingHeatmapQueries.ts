@@ -81,6 +81,7 @@ export async function fetchStaffingHeatmapData(
       date: r.date,
       userId: r.userId,
       onlineSeconds: r.onlineSeconds,
+      hourlyOnlineSeconds: r.hourlyOnlineSeconds,
     })),
   };
 }
