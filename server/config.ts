@@ -16,7 +16,6 @@ const configSchema = z.object({
     JWT_SECRET: z.string().min(64, 'JWT_SECRET must be at least 64 characters for HS256 security'),
     ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
     REFRESH_TOKEN_EXPIRY: z.string().default('7d'),
-    MAX_EXPERTS_SHOWN: z.coerce.number().int().positive().default(8),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     UPLOAD_MAX_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     UPLOAD_ALLOWED_TYPES: z.preprocess(
@@ -86,7 +85,6 @@ const parseResult = configSchema.safeParse({
     JWT_SECRET: process.env.JWT_SECRET,
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY,
-    MAX_EXPERTS_SHOWN: process.env.MAX_EXPERTS_SHOWN,
     LOG_LEVEL: process.env.LOG_LEVEL,
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
     UPLOAD_ALLOWED_TYPES: process.env.UPLOAD_ALLOWED_TYPES,
