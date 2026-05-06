@@ -532,6 +532,14 @@ export const dailyAgentStatus = pgTable('daily_agent_status', {
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   onlineSeconds: integer('online_seconds').notNull().default(0),
   awaySeconds: integer('away_seconds').notNull().default(0),
+  // 24-element array: seconds the user spent in `online` status during each
+  // hour-of-day bucket (UTC). Sum equals onlineSeconds. Powers the per-hour
+  // staff coverage cell in the dashboard staffing-fit zone — without it, the
+  // dashboard had to broadcast the daily total to every hour of the row.
+  hourlyOnlineSeconds: jsonb('hourly_online_seconds')
+    .$type<number[]>()
+    .notNull()
+    .default(sql`'[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]'::jsonb`),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),
