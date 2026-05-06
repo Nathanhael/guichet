@@ -8,9 +8,11 @@ import FieldError from '../FieldError';
 import Toast from '../Toast';
 import { LABEL_COLORS as COLORS, COLOR_BG_MAP } from '../../utils/labelColors';
 import { labelCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 export default function AdminLabels() {
   const t = useT();
+  const isGuest = useIsExternalAdmin();
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState<typeof COLORS[number]['key']>('indigo');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -110,51 +112,53 @@ export default function AdminLabels() {
       <ErrorBox error={error} />
 
       {/* Create new label */}
-      <div className={`${CARD} p-5 mb-6`}>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label')}</h3>
-        <div className="flex items-end gap-4 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_name')} *</label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
-              onKeyDown={(e) => e.key === 'Enter' && addLabel()}
-              placeholder={t('label_name_placeholder')}
-              className={`${INPUT} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
-              maxLength={50}
-            />
-            <FieldError error={fieldErrors.name} />
-          </div>
-          <div>
-            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_color')} *</label>
-            <div className="flex gap-1.5 p-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)]" role="radiogroup" aria-label={t('label_color')}>
-              {COLORS.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => setNewColor(c.key)}
-                  role="radio"
-                  aria-checked={newColor === c.key}
-                  aria-label={c.key}
-                  className={`w-6 h-6 rounded-full ${c.bg} transition-opacity ${
-                    newColor === c.key
-                      ? 'ring-2 ring-offset-2 ring-offset-[var(--color-bg-surface)] ' + c.ring
-                      : 'opacity-50 hover:opacity-80'
-                  }`}
-                />
-              ))}
+      {!isGuest && (
+        <div className={`${CARD} p-5 mb-6`}>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label')}</h3>
+          <div className="flex items-end gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_name')} *</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
+                onKeyDown={(e) => e.key === 'Enter' && addLabel()}
+                placeholder={t('label_name_placeholder')}
+                className={`${INPUT} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
+                maxLength={50}
+              />
+              <FieldError error={fieldErrors.name} />
             </div>
+            <div>
+              <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_color')} *</label>
+              <div className="flex gap-1.5 p-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)]" role="radiogroup" aria-label={t('label_color')}>
+                {COLORS.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => setNewColor(c.key)}
+                    role="radio"
+                    aria-checked={newColor === c.key}
+                    aria-label={c.key}
+                    className={`w-6 h-6 rounded-full ${c.bg} transition-opacity ${
+                      newColor === c.key
+                        ? 'ring-2 ring-offset-2 ring-offset-[var(--color-bg-surface)] ' + c.ring
+                        : 'opacity-50 hover:opacity-80'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={addLabel}
+              disabled={!newName.trim() || createMutation.isPending}
+              className="h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {createMutation.isPending ? (t('adding_label')) : (t('add_label'))}
+            </button>
           </div>
-          <button
-            onClick={addLabel}
-            disabled={!newName.trim() || createMutation.isPending}
-            className="h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {createMutation.isPending ? (t('adding_label')) : (t('add_label'))}
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Labels list */}
       <div className={`${CARD} overflow-hidden`}>
@@ -228,23 +232,27 @@ export default function AdminLabels() {
                   </div>
                   <div className="px-4 py-3 text-[14px] font-medium text-[var(--color-ink)] flex items-center">{l.name}</div>
                   <div className="px-4 py-3 flex items-center gap-1">
-                    <button
-                      onClick={() => startEdit(l.id, l.name, l.color)}
-                      className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                      title={t('edit_label')}
-                      aria-label={`${t('edit_label')} ${l.name}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => confirmDeleteLabel(l.id, l.name)}
-                      disabled={deletingId === l.id}
-                      className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                      title={t('delete')}
-                      aria-label={`${t('delete')} ${l.name}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {!isGuest && (
+                      <>
+                        <button
+                          onClick={() => startEdit(l.id, l.name, l.color)}
+                          className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
+                          title={t('edit_label')}
+                          aria-label={`${t('edit_label')} ${l.name}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => confirmDeleteLabel(l.id, l.name)}
+                          disabled={deletingId === l.id}
+                          className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
+                          title={t('delete')}
+                          aria-label={`${t('delete')} ${l.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               )}

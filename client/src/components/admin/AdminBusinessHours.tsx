@@ -15,6 +15,7 @@ import {
   sortBusinessHoursExceptions,
 } from '../../utils/businessHours';
 import { useBusinessHours } from '../../hooks/useBusinessHours';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 import { useT } from '../../i18n';
 import TimezonePicker from '../TimezonePicker';
 
@@ -98,6 +99,7 @@ function OpenClosedToggle({
 
 export default function AdminBusinessHours() {
   const t = useT();
+  const isGuest = useIsExternalAdmin();
   const { schedule: fetchedSchedule, status, isLoading, invalidate } = useBusinessHours();
   const [schedule, setSchedule] = useState<BusinessHoursSchedule>(createDefaultBusinessHoursSchedule());
   const [isDirty, setIsDirty] = useState(false);
@@ -146,32 +148,34 @@ export default function AdminBusinessHours() {
           <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('bh_title')}</h2>
           <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('bh_desc')}</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setSchedule(createDefaultBusinessHoursSchedule(schedule.timezone));
-              setIsDirty(true);
-            }}
-            className={SECONDARY_BTN}
-          >
-            {t('bh_reset')}
-          </button>
-          <button
-            disabled={!isDirty || mutation.isPending || draftIssues.length > 0}
-            onClick={() => {
-              if (draftIssues.length > 0) return;
-              mutation.mutate({
-                schedule: {
-                  ...schedule,
-                  exceptions: sortBusinessHoursExceptions(schedule.exceptions),
-                },
-              });
-            }}
-            className={PRIMARY_BTN}
-          >
-            {mutation.isPending ? t('bh_saving') : t('bh_save')}
-          </button>
-        </div>
+        {!isGuest && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSchedule(createDefaultBusinessHoursSchedule(schedule.timezone));
+                setIsDirty(true);
+              }}
+              className={SECONDARY_BTN}
+            >
+              {t('bh_reset')}
+            </button>
+            <button
+              disabled={!isDirty || mutation.isPending || draftIssues.length > 0}
+              onClick={() => {
+                if (draftIssues.length > 0) return;
+                mutation.mutate({
+                  schedule: {
+                    ...schedule,
+                    exceptions: sortBusinessHoursExceptions(schedule.exceptions),
+                  },
+                });
+              }}
+              className={PRIMARY_BTN}
+            >
+              {mutation.isPending ? t('bh_saving') : t('bh_save')}
+            </button>
+          </div>
+        )}
       </div>
 
       {mutation.error && (

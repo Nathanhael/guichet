@@ -5,6 +5,7 @@ import { labels, ticketLabels, auditLog } from '../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { conflict, wrapError } from '../../utils/trpcErrors.js';
+import { trpcActor } from '../../services/auth/index.js';
 import type { Server } from 'socket.io';
 
 const ALLOWED_COLORS = ['blue', 'indigo', 'purple', 'emerald', 'teal', 'cyan', 'sky', 'amber', 'orange', 'rose', 'pink', 'slate'] as const;
@@ -49,6 +50,7 @@ export const labelRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
+        trpcActor(ctx, { capability: 'destructive_admin' });
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         const id = `l_${crypto.randomUUID()}`;
@@ -89,6 +91,7 @@ export const labelRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
+        trpcActor(ctx, { capability: 'destructive_admin' });
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         const conditions = [eq(labels.id, input.id), eq(labels.partnerId, ctx.user.partnerId)];
@@ -129,6 +132,7 @@ export const labelRouter = router({
     .input(z.string().min(1))
     .mutation(async ({ input: id, ctx }) => {
       try {
+        trpcActor(ctx, { capability: 'destructive_admin' });
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         // Always scope to current partner — platform operators have partnerId set via enter-partner

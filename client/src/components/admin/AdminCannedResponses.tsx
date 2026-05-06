@@ -8,6 +8,7 @@ import BionicText from '../BionicText';
 import { cannedResponseCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useStoreShallow } from '../../store/useStore';
 import { usePartner } from '../../hooks/usePartner';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 type SupportedLang = 'nl' | 'fr' | 'en';
 const ALL_LANGS: SupportedLang[] = ['nl', 'fr', 'en'];
@@ -46,6 +47,7 @@ function defaultSourceLang(userLang: string | null | undefined): SupportedLang {
 
 export default function AdminCannedResponses() {
   const t = useT();
+  const isGuest = useIsExternalAdmin();
   const { bionicReading, user } = useStoreShallow(s => ({ bionicReading: s.bionicReading, user: s.user }));
   const { manifest } = usePartner();
   const departments = manifest.departments || [];
@@ -256,6 +258,7 @@ export default function AdminCannedResponses() {
       <ErrorBox error={error} />
 
       {/* Create new canned response */}
+      {!isGuest && (
       <div className={`${CARD} p-5 mb-6`}>
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_response')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -336,9 +339,10 @@ export default function AdminCannedResponses() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Untranslated backfill banner */}
-      {featureOn && untranslatedCount > 0 && (
+      {!isGuest && featureOn && untranslatedCount > 0 && (
         <div
           className={`${CARD} flex items-center justify-between gap-3 p-4 mb-4 border border-[var(--color-accent)]/20`}
           data-testid="canned-backfill-banner"
@@ -514,18 +518,20 @@ export default function AdminCannedResponses() {
                                 className={TEXTAREA}
                                 data-testid={`edit-body-${lang}`}
                               />
-                              <div className="flex justify-end mt-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => regenerate(cr.id, lang)}
-                                  disabled={regenerateMutation.isPending}
-                                  className={SECONDARY_BTN}
-                                  data-testid={`regenerate-${lang}`}
-                                >
-                                  <RefreshCw className={`h-3 w-3 ${isRegenerating ? 'animate-spin' : ''}`} />
-                                  {isRegenerating ? t('admin_canned_translate_translating') : t('admin_canned_translate_regenerate')}
-                                </button>
-                              </div>
+                              {!isGuest && (
+                                <div className="flex justify-end mt-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => regenerate(cr.id, lang)}
+                                    disabled={regenerateMutation.isPending}
+                                    className={SECONDARY_BTN}
+                                    data-testid={`regenerate-${lang}`}
+                                  >
+                                    <RefreshCw className={`h-3 w-3 ${isRegenerating ? 'animate-spin' : ''}`} />
+                                    {isRegenerating ? t('admin_canned_translate_translating') : t('admin_canned_translate_regenerate')}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -580,23 +586,27 @@ export default function AdminCannedResponses() {
                         {cr.shortcut || <span className="italic font-sans text-[var(--color-ink-muted)]">—</span>}
                       </div>
                       <div className="px-4 py-3 flex items-center justify-end gap-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); startEdit(cr); }}
-                          className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                          title={t('edit')}
-                          aria-label={t('canned_edit_for_aria').replace('{title}', cr.title)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteResponse(cr.id); }}
-                          disabled={deleteMutation.isPending}
-                          className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                          title={t('delete')}
-                          aria-label={t('canned_delete_for_aria').replace('{title}', cr.title)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {!isGuest && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); startEdit(cr); }}
+                              className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
+                              title={t('edit')}
+                              aria-label={t('canned_edit_for_aria').replace('{title}', cr.title)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteResponse(cr.id); }}
+                              disabled={deleteMutation.isPending}
+                              className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
+                              title={t('delete')}
+                              aria-label={t('canned_delete_for_aria').replace('{title}', cr.title)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     {expandedId === cr.id && (
