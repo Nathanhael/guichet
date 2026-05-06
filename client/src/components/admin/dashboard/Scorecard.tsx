@@ -3,10 +3,10 @@
  *
  * Three controlled cards (SLA, CSAT, Volume) with big-number + trend +
  * SLA color band per spec §3 / §8. Parent owns the tRPC query and passes
- * data in. Click on any card routes to its drill-down per spec §5:
- *   SLA -> AdminTickets filtered to breached
- *   CSAT -> AdminSatisfaction
- *   Volume -> AdminTickets (current period)
+ * data in. Cards are display-only — the spec called for click-through
+ * drill-downs (SLA → AdminTickets filtered to breached, etc) but the app
+ * has no router and the partner explicitly opted out of that flow, so
+ * the cards render as plain tiles rather than dead `<a href>` links.
  */
 
 export type SlaBand = 'green' | 'amber' | 'red' | 'neutral';
@@ -33,7 +33,7 @@ export interface ScorecardProps {
 }
 
 const CARD_BASE =
-  'flex flex-col gap-2 p-4 rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] shadow-[var(--shadow-soft)] transition-colors no-underline';
+  'flex flex-col gap-2 p-4 rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] shadow-[var(--shadow-soft)]';
 const CARD_LABEL =
   'text-[12px] uppercase tracking-wide text-[var(--color-ink-muted)]';
 const CARD_VALUE =
@@ -85,21 +85,18 @@ export function Scorecard({ data, loading, error, onRetry }: ScorecardProps) {
       <Card
         testId="scorecard-sla"
         label="SLA"
-        href="/admin/tickets?slaBreached=1"
         card={data.sla}
         format="percent"
       />
       <Card
         testId="scorecard-csat"
         label="CSAT"
-        href="/admin/satisfaction"
         card={data.csat}
         format="decimal"
       />
       <Card
         testId="scorecard-volume"
         label="Volume"
-        href="/admin/tickets"
         card={data.volume}
         format="integer"
       />
@@ -110,7 +107,6 @@ export function Scorecard({ data, loading, error, onRetry }: ScorecardProps) {
 interface CardProps {
   testId: string;
   label: string;
-  href: string;
   card: ScorecardCardData;
   format: 'percent' | 'decimal' | 'integer';
 }
@@ -127,7 +123,7 @@ function trendDirection(deltaPct: number | null): 'up' | 'down' | undefined {
   return deltaPct > 0 ? 'up' : 'down';
 }
 
-function Card({ testId, label, href, card, format }: CardProps) {
+function Card({ testId, label, card, format }: CardProps) {
   const trend = trendDirection(card.deltaPct);
   const dataAttrs: Record<string, string> = {
     'data-testid': testId,
@@ -137,8 +133,8 @@ function Card({ testId, label, href, card, format }: CardProps) {
   if (card.tooltip) dataAttrs.title = card.tooltip;
 
   return (
-    <a
-      href={href}
+    <div
+      role="group"
       aria-label={label}
       className={CARD_BASE}
       style={{ borderTop: `2px solid ${BAND_COLOR[card.band]}` }}
@@ -159,7 +155,7 @@ function Card({ testId, label, href, card, format }: CardProps) {
       ) : (
         <span className={CARD_DELTA}>&nbsp;</span>
       )}
-    </a>
+    </div>
   );
 }
 
