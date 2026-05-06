@@ -113,6 +113,13 @@
       "when": 1777999167263,
       "tag": "0015_numerous_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778090336257,
+      "tag": "0016_add_hourly_online_seconds",
+      "breakpoints": true
     }
   ]
 }
