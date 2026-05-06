@@ -892,6 +892,7 @@ const en: Record<string, string> = {
     granularity_monthly: 'Monthly',
     error_trends_load: 'Could not load trend data.',
     trends_not_enough_data: 'Not enough data — first chart appears at 3+ data points.',
+    trends_window_too_short: 'Pick a 7-day window or wider to see trends — Today is too short.',
     trends_chart_volume: 'Volume',
     trends_chart_csat: 'CSAT',
     trends_chart_response: 'Avg response (min)',

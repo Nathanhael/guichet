@@ -43,6 +43,12 @@ export function DashboardView({
   const { filters, applyPreset, setFilter, reset } = useDashboardFilters();
 
   const range = useMemo(() => resolveDateRange(filters), [filters]);
+  const windowDays = useMemo(() => {
+    const fromMs = new Date(`${range.dateFrom}T00:00:00Z`).getTime();
+    const toMs = new Date(`${range.dateTo}T00:00:00Z`).getTime();
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs < fromMs) return undefined;
+    return Math.floor((toMs - fromMs) / 86_400_000) + 1;
+  }, [range.dateFrom, range.dateTo]);
 
   const manifestQuery = trpc.partner.getManifest.useQuery(undefined, {
     staleTime: 60_000,
@@ -188,6 +194,7 @@ export function DashboardView({
           loading={trendsQuery.isLoading}
           error={trendsQuery.isError}
           onRetry={() => trendsQuery.refetch()}
+          windowDays={windowDays}
         />
       </DashboardZone>
       <DashboardZone testId="dashboard-zone-breakdown" title={t('zone_breakdown')}>
