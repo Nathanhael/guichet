@@ -11,6 +11,8 @@ const ALL_CAPS: Capability[] = [
   'manage_tenant',
   'export_tickets',
   'destructive_admin',
+  'audit_read',
+  'ai_config_read',
 ];
 
 const actor = (overrides: Partial<UserActor>): UserActor => ({
@@ -63,6 +65,20 @@ const TRUTH_TABLE: Array<[UserRole, boolean, boolean, Capability, boolean]> = [
   ['platform_operator', true,  true,  'destructive_admin',     false],
   ['support',           false, false, 'destructive_admin',     false],
   ['agent',             false, false, 'destructive_admin',     false],
+
+  ['admin',             false, false, 'audit_read',            true],
+  ['admin',             false, true,  'audit_read',            false],
+  ['platform_operator', true,  false, 'audit_read',            true],
+  ['platform_operator', true,  true,  'audit_read',            false],
+  ['support',           false, false, 'audit_read',            false],
+  ['agent',             false, false, 'audit_read',            false],
+
+  ['admin',             false, false, 'ai_config_read',        true],
+  ['admin',             false, true,  'ai_config_read',        false],
+  ['platform_operator', true,  false, 'ai_config_read',        true],
+  ['platform_operator', true,  true,  'ai_config_read',        false],
+  ['support',           false, false, 'ai_config_read',        false],
+  ['agent',             false, false, 'ai_config_read',        false],
 ];
 
 describe('capabilities — truth table', () => {

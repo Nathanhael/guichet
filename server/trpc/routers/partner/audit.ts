@@ -91,7 +91,7 @@ export const partnerAuditRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+        const actor = trpcActor(ctx, { capability: 'audit_read' });
 
         const conditions = buildConditions(input, actor.partnerId);
 
@@ -139,7 +139,7 @@ export const partnerAuditRouter = router({
   // (legacy/adjacent emitters that don't set targetType). Partner-scoped via
   // partnerId so cross-tenant leakage is impossible even if a caller guesses
   // another tenant's ticket id. Same actor-name leak as getAuditLog, so the
-  // same `destructive_admin` capability gate applies.
+  // same `audit_read` capability gate applies.
   getForTicket: partnerAdminProcedure
     .input(z.object({
       ticketId: z.string(),
@@ -147,7 +147,7 @@ export const partnerAuditRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+        const actor = trpcActor(ctx, { capability: 'audit_read' });
 
         const results = await db.select({
           id: auditLog.id,
@@ -184,7 +184,8 @@ export const partnerAuditRouter = router({
     .input(baseInput)
     .query(async ({ input, ctx }) => {
       try {
-        const conditions = buildConditions(input, ctx.user.partnerId);
+        const actor = trpcActor(ctx, { capability: 'audit_read' });
+        const conditions = buildConditions(input, actor.partnerId);
 
         return await db.select({
           id: auditLog.id,

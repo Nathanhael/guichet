@@ -7,7 +7,9 @@ export type Capability =
   | 'use_support_workflows'
   | 'manage_tenant'
   | 'export_tickets'
-  | 'destructive_admin';
+  | 'destructive_admin'
+  | 'audit_read'
+  | 'ai_config_read';
 
 export interface UserActor {
   kind: 'user';
