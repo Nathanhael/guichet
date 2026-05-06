@@ -37,12 +37,22 @@ export interface DashboardViewProps {
 }
 
 export function DashboardView({
-  departments = [],
+  departments: departmentsProp,
 }: DashboardViewProps = {}) {
   const t = useT();
   const { filters, applyPreset, setFilter, reset } = useDashboardFilters();
 
   const range = useMemo(() => resolveDateRange(filters), [filters]);
+
+  const manifestQuery = trpc.partner.getManifest.useQuery(undefined, {
+    staleTime: 60_000,
+    enabled: departmentsProp === undefined,
+  });
+  const departments = useMemo(() => {
+    if (departmentsProp) return departmentsProp;
+    const raw = (manifestQuery.data?.departments as Array<{ id: string; name?: string }> | null) ?? [];
+    return raw.filter((d) => d?.id).map((d) => ({ id: d.id, name: d.name ?? d.id }));
+  }, [departmentsProp, manifestQuery.data]);
 
   const queryInput = {
     dateFrom: range.dateFrom,
