@@ -161,6 +161,15 @@ export interface Ticket {
   labels: string[];
   reopened?: boolean | null;
   reopenCount?: number | null;
+  /**
+   * Server-supplied enrichment populated only for archive-style listings
+   * (paginated terminal-status queries). Undefined elsewhere; optional so
+   * existing call sites don't need to widen their fixtures.
+   *   firstMessage = first non-system, non-deleted message text in the thread
+   *   rating       = CSAT score 1-5 if the customer left one
+   */
+  firstMessage?: string | null;
+  rating?: number | null;
 }
 
 export interface Message {
