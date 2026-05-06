@@ -5,10 +5,10 @@ import type { Page } from '@playwright/test';
  *
  * Why this helper exists:
  *   The client uses `httpBatchLink`, so when DashboardView mounts and fires its
- *   7 dashboard.* queries within the same React render they all collapse into
+ *   dashboard.* queries within the same React render they all collapse into
  *   a single HTTP request. The URL ends up shaped like:
  *
- *     /api/v1/trpc/dashboard.getActionList,dashboard.getScorecard,...
+ *     /api/v1/trpc/dashboard.getScorecard,dashboard.getStaffingHeatmap,...
  *
  *   A glob pattern like `**\/api/v1/trpc/dashboard.getOnboardingState**` only
  *   matches when the named procedure is the FIRST call segment after `/trpc/`.
@@ -29,7 +29,6 @@ import type { Page } from '@playwright/test';
  *   not in the mocks map (dashboard or otherwise) keep their real values.
  */
 export type DashboardProcedure =
-  | 'dashboard.getActionList'
   | 'dashboard.getScorecard'
   | 'dashboard.getDeptBreakdown'
   | 'dashboard.getStaffBreakdown'
@@ -40,7 +39,6 @@ export type DashboardProcedure =
 export type DashboardMocks = Partial<Record<DashboardProcedure, unknown>>;
 
 const DASHBOARD_PROCEDURES = new Set<DashboardProcedure>([
-  'dashboard.getActionList',
   'dashboard.getScorecard',
   'dashboard.getDeptBreakdown',
   'dashboard.getStaffBreakdown',

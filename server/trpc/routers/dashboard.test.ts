@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => {
   return {
-    fetchSlaBreaches: vi.fn(),
-    fetchAbandonedTickets: vi.fn(),
-    fetchUntreatedFeedback: vi.fn(),
-    fetchPendingInvites: vi.fn(),
     fetchPeriodRollup: vi.fn(),
     fetchDeptBreakdownData: vi.fn(),
     fetchStaffBreakdownData: vi.fn(),
@@ -14,13 +10,6 @@ const h = vi.hoisted(() => {
     fetchOnboardingData: vi.fn(),
   };
 });
-
-vi.mock('../../services/dashboard/actionListQueries.js', () => ({
-  fetchSlaBreaches: h.fetchSlaBreaches,
-  fetchAbandonedTickets: h.fetchAbandonedTickets,
-  fetchUntreatedFeedback: h.fetchUntreatedFeedback,
-  fetchPendingInvites: h.fetchPendingInvites,
-}));
 
 vi.mock('../../services/dashboard/scorecardQueries.js', () => ({
   fetchPeriodRollup: h.fetchPeriodRollup,
@@ -85,158 +74,6 @@ function caller(over: Partial<{
     },
   } as unknown as CallerCtx);
 }
-
-describe('dashboardRouter.getActionList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    h.fetchSlaBreaches.mockResolvedValue([]);
-    h.fetchAbandonedTickets.mockResolvedValue([]);
-    h.fetchUntreatedFeedback.mockResolvedValue([]);
-    h.fetchPendingInvites.mockResolvedValue([]);
-  });
-
-  it('returns four empty buckets when queries return no rows', async () => {
-    const out = await caller().getActionList({});
-    expect(out).toEqual({
-      slaBreaches: [],
-      abandoned: [],
-      untreatedFeedback: [],
-      pendingInvites: [],
-    });
-  });
-
-  it('forwards ctx.user.partnerId to every query (never trusts input)', async () => {
-    await caller({ partnerId: 'tenant-x' }).getActionList({});
-    expect(h.fetchSlaBreaches).toHaveBeenCalledWith(
-      'tenant-x',
-      expect.any(Date),
-      expect.any(Date),
-    );
-    expect(h.fetchAbandonedTickets).toHaveBeenCalledWith(
-      'tenant-x',
-      expect.any(Date),
-      expect.any(Date),
-    );
-    expect(h.fetchUntreatedFeedback).toHaveBeenCalledWith(
-      'tenant-x',
-      expect.any(Date),
-      expect.any(Date),
-    );
-    expect(h.fetchPendingInvites).toHaveBeenCalledWith('tenant-x');
-  });
-
-  it('uses a 7-day default window when no dates are supplied', async () => {
-    const before = Date.now();
-    await caller().getActionList({});
-    const [, from, to] = h.fetchSlaBreaches.mock.calls[0];
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    expect(to.getTime() - from.getTime()).toBeGreaterThanOrEqual(sevenDaysMs - 1000);
-    expect(to.getTime() - from.getTime()).toBeLessThanOrEqual(sevenDaysMs + 1000);
-    expect(to.getTime()).toBeGreaterThanOrEqual(before);
-  });
-
-  it('honors explicit dateFrom / dateTo input', async () => {
-    await caller().getActionList({
-      dateFrom: '2026-04-01',
-      dateTo: '2026-04-15',
-    });
-    const [, from, to] = h.fetchSlaBreaches.mock.calls[0];
-    expect(from.toISOString().slice(0, 10)).toBe('2026-04-01');
-    expect(to.toISOString().slice(0, 10)).toBe('2026-04-15');
-  });
-
-  it('rejects date ranges greater than 365 days', async () => {
-    await expect(
-      caller().getActionList({
-        dateFrom: '2025-01-01',
-        dateTo: '2026-04-01',
-      }),
-    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
-  });
-
-  it('forwards rows from the queries through buildActionList', async () => {
-    h.fetchSlaBreaches.mockResolvedValue([
-      {
-        id: 'b-1',
-        partnerId: 'p1',
-        ticketId: 't-1',
-        ticketTitle: 'Login broken',
-        breachedAt: new Date('2026-04-22T09:00:00Z'),
-      },
-    ]);
-    h.fetchUntreatedFeedback.mockResolvedValue([
-      {
-        id: 'f-1',
-        partnerId: 'p1',
-        type: 'bug',
-        body: 'AppCrashes',
-        submittedAt: new Date('2026-04-22T09:00:00Z'),
-        treated: false,
-      },
-    ]);
-
-    const out = await caller().getActionList({
-      dateFrom: '2026-04-20',
-      dateTo: '2026-04-25',
-    });
-    expect(out.slaBreaches).toHaveLength(1);
-    expect(out.slaBreaches[0]).toMatchObject({
-      kind: 'sla_breach',
-      ticketId: 't-1',
-      linkTarget: '/admin/tickets/t-1',
-    });
-    expect(out.untreatedFeedback).toHaveLength(1);
-    expect(out.untreatedFeedback[0].kind).toBe('feedback_untreated');
-  });
-
-  it('drops rows from the wrong partner returned by a buggy query (defense in depth)', async () => {
-    h.fetchSlaBreaches.mockResolvedValue([
-      {
-        id: 'b-mine',
-        partnerId: 'p1',
-        ticketId: 't-1',
-        ticketTitle: 'A',
-        breachedAt: new Date('2026-04-22T09:00:00Z'),
-      },
-      {
-        id: 'b-other',
-        partnerId: 'p2',
-        ticketId: 't-2',
-        ticketTitle: 'B',
-        breachedAt: new Date('2026-04-22T09:00:00Z'),
-      },
-    ]);
-    const out = await caller({ partnerId: 'p1' }).getActionList({
-      dateFrom: '2026-04-20',
-      dateTo: '2026-04-25',
-    });
-    expect(out.slaBreaches.map((r) => r.id)).toEqual(['b-mine']);
-  });
-
-  it('admins are allowed', async () => {
-    await expect(
-      caller({ role: 'admin' }).getActionList({}),
-    ).resolves.toBeDefined();
-  });
-
-  it('support staff are allowed', async () => {
-    await expect(
-      caller({ role: 'support' }).getActionList({}),
-    ).resolves.toBeDefined();
-  });
-
-  it('agents are forbidden', async () => {
-    await expect(
-      caller({ role: 'agent' }).getActionList({}),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  });
-
-  it('platform operators bypass the role gate', async () => {
-    await expect(
-      caller({ role: 'agent', isPlatformOperator: true }).getActionList({}),
-    ).resolves.toBeDefined();
-  });
-});
 
 const EMPTY_ROLLUP = {
   totalTickets: 0,

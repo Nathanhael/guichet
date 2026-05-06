@@ -846,9 +846,8 @@ const fr: Record<string, string> = {
     col_last_activity: 'Dernière activité',
     cross_partner_filter_btn: 'Filtrer →',
 
-    // Dashboard 5-zone subcomponents (DashboardView / FilterBar / ActionList / TrendsZone)
+    // Dashboard zone subcomponents (DashboardView / FilterBar / TrendsZone)
     dashboard_filters_aria: 'Filtres du tableau de bord',
-    zone_action_list: 'Liste d\'actions',
     zone_scorecard: 'Tableau de bord',
     zone_staffing_fit: 'Adéquation effectifs',
     zone_trends: 'Tendances',
@@ -860,13 +859,7 @@ const fr: Record<string, string> = {
     filter_all_departments_full: 'Tous les départements',
     filter_export_csv: 'Exporter en CSV',
     filter_export_pdf: 'Exporter en PDF',
-    error_action_list_load: 'Impossible de charger la liste d\'actions.',
     retry: 'Réessayer',
-    all_clear_today: 'Tout est en ordre aujourd\'hui',
-    action_sla_breaches: 'Violations SLA',
-    action_abandoned: 'Abandonnés',
-    action_untreated_feedback: 'Retours non traités',
-    action_pending_invites: 'Invitations en attente',
     granularity_daily: 'Quotidien',
     granularity_weekly: 'Hebdomadaire',
     granularity_monthly: 'Mensuel',

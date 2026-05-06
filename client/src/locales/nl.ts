@@ -846,9 +846,8 @@ const nl: Record<string, string> = {
     col_last_activity: 'Laatste activiteit',
     cross_partner_filter_btn: 'Filteren →',
 
-    // Dashboard 5-zone subcomponents (DashboardView / FilterBar / ActionList / TrendsZone)
+    // Dashboard zone subcomponents (DashboardView / FilterBar / TrendsZone)
     dashboard_filters_aria: 'Dashboardfilters',
-    zone_action_list: 'Actielijst',
     zone_scorecard: 'Scorecard',
     zone_staffing_fit: 'Bezetting',
     zone_trends: 'Trends',
@@ -860,13 +859,7 @@ const nl: Record<string, string> = {
     filter_all_departments_full: 'Alle afdelingen',
     filter_export_csv: 'CSV exporteren',
     filter_export_pdf: 'PDF exporteren',
-    error_action_list_load: 'Actielijst kon niet worden geladen.',
     retry: 'Opnieuw proberen',
-    all_clear_today: 'Alles in orde vandaag',
-    action_sla_breaches: 'SLA-schendingen',
-    action_abandoned: 'Verlaten',
-    action_untreated_feedback: 'Onbehandelde feedback',
-    action_pending_invites: 'Openstaande uitnodigingen',
     granularity_daily: 'Dagelijks',
     granularity_weekly: 'Wekelijks',
     granularity_monthly: 'Maandelijks',
