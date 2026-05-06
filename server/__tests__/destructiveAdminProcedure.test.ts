@@ -181,15 +181,24 @@ describe('post-#71 capability-gate enforcement (source-level)', () => {
     it.each([
       ['getAuditLog'],
       ['getForTicket'],
-    ])('audit.%s body asserts destructive_admin capability inline', (op) => {
+      ['exportAuditLog'],
+    ])('audit.%s body asserts audit_read capability inline', (op) => {
       const re = new RegExp(
-        `\\b${op}:\\s*partnerAdminProcedure[\\s\\S]{0,4000}?trpcActor\\(\\s*ctx\\s*,\\s*\\{\\s*capability:\\s*['"]destructive_admin['"]`,
+        `\\b${op}:\\s*partnerAdminProcedure[\\s\\S]{0,4000}?trpcActor\\(\\s*ctx\\s*,\\s*\\{\\s*capability:\\s*['"]audit_read['"]`,
       );
       expect(auditSource).toMatch(re);
     });
+  });
 
-    it('exportAuditLog stays on partnerAdminProcedure (no guest gate)', () => {
-      expect(auditSource).toMatch(/\bexportAuditLog:\s*partnerAdminProcedure\b/);
+  describe('partner.config AI customization routes are guest-gated', () => {
+    it('getAiCustomization body asserts ai_config_read capability inline', () => {
+      const re = /\bgetAiCustomization:\s*adminProcedure[\s\S]{0,2000}?trpcActor\(\s*ctx\s*,\s*\{\s*capability:\s*['"]ai_config_read['"]/;
+      expect(configSource).toMatch(re);
+    });
+
+    it('updateAiCustomization body asserts destructive_admin capability inline', () => {
+      const re = /\bupdateAiCustomization:\s*adminProcedure[\s\S]{0,3000}?trpcActor\(\s*ctx\s*,\s*\{\s*capability:\s*['"]destructive_admin['"]/;
+      expect(configSource).toMatch(re);
     });
   });
 });

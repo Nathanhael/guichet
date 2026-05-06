@@ -426,6 +426,10 @@ export const partnerConfigRouter = router({
       }).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      // adminProcedure passes B2B guests with admin role through; gate the
+      // mutation explicitly so guests can't push prompt customizations via
+      // direct tRPC calls even though the UI tab is hidden.
+      trpcActor(ctx, { capability: 'destructive_admin' });
       const partnerId = ctx.user.partnerId;
       if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
@@ -452,6 +456,9 @@ export const partnerConfigRouter = router({
     }),
 
   getAiCustomization: adminProcedure.query(async ({ ctx }) => {
+    // Hidden from the B2B guest UI; gate the read so it can't be scraped
+    // via direct tRPC calls.
+    trpcActor(ctx, { capability: 'ai_config_read' });
     const partnerId = ctx.user.partnerId;
     if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 

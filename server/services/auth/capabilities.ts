@@ -19,6 +19,10 @@ export const RULES: Record<Capability, Rule> = {
   export_tickets: (a) => canExportTickets(a.role, a.isPlatformOperator),
   destructive_admin: (a) =>
     !a.isExternal && (isTenantAdmin(a.role) || isPlatformAdmin(a.isPlatformOperator)),
+  audit_read: (a) =>
+    !a.isExternal && (isTenantAdmin(a.role) || isPlatformAdmin(a.isPlatformOperator)),
+  ai_config_read: (a) =>
+    !a.isExternal && (isTenantAdmin(a.role) || isPlatformAdmin(a.isPlatformOperator)),
 };
 
 export function can(actor: UserActor, cap: Capability): boolean {
