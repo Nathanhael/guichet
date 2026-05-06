@@ -322,6 +322,50 @@ export const partnerConfigRouter = router({
       }
     }),
 
+  updateDashboardConfig: adminProcedure
+    .input(z.object({
+      // Tickets-per-staff-per-hour cap above which the staffing-fit zone flags
+      // a (dow, hour) cell as understaffed. Decimal allowed (e.g. 4.5 for
+      // chat-support with mixed parallelism). Range covers phone-only (≈1) up
+      // through async/email (≈20).
+      ticketsPerStaffPerHour: z.number().min(0.5).max(50),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const partnerId = ctx.user.partnerId;
+        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+        const [row] = await db
+          .select({ dashboardConfig: partners.dashboardConfig })
+          .from(partners)
+          .where(eq(partners.id, partnerId));
+        if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+
+        const next = {
+          ...(row.dashboardConfig ?? {}),
+          ticketsPerStaffPerHour: input.ticketsPerStaffPerHour,
+        };
+
+        await db.update(partners)
+          .set({ dashboardConfig: next, updatedAt: new Date().toISOString() })
+          .where(eq(partners.id, partnerId));
+
+        await db.insert(auditLog).values({
+          action: 'partner.config_updated',
+          actorId: ctx.user.id,
+          partnerId,
+          targetType: 'partner',
+          targetId: partnerId,
+          metadata: { details: 'Dashboard config updated', ticketsPerStaffPerHour: input.ticketsPerStaffPerHour },
+        });
+
+        logger.info({ partnerId, ticketsPerStaffPerHour: input.ticketsPerStaffPerHour }, 'Dashboard config updated by Partner Admin');
+        return { success: true, dashboardConfig: next };
+      } catch (err: unknown) {
+        wrapError(err, 'update dashboard config');
+      }
+    }),
+
   updateDepartmentSla: partnerAdminProcedure
     .input(z.object({
       departmentId: z.string().min(1),
