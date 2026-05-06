@@ -458,6 +458,154 @@ const FEEDBACK_TEXTS = [
   'Default queue tab should be remembered across sessions.',
 ];
 
+const DEPT_OPENERS: Record<string, string[]> = {
+  DSC: [
+    'Carrier portal is timing out on route lookups — can you verify the dispatcher API is healthy?',
+    'I have a customer waiting on a routing decision for shipment 4421 and the queue isn\'t moving.',
+    'Triage is bouncing between depts — need a routing override.',
+  ],
+  FOT: [
+    'Customer wants to upgrade their plan but the upgrade flow shows a blank page.',
+    'New onboarding doc is missing the welcome letter template.',
+    'VIP customer escalation: account lookup returns no results.',
+  ],
+  TEC: [
+    'Production POST /ingest is returning 500s since the deploy.',
+    'Webhook signatures fail verification roughly 1 in 20 deliveries.',
+    'OAuth token refresh fails silently on stale sessions.',
+  ],
+};
+
+const SUPPORT_RESPONSES = [
+  'Looking into this — can you share the request ID?',
+  'Acknowledged. Pulling logs now.',
+  'Got it. Reproducing locally — will revert in a few minutes.',
+  'Thanks for the report. Can you confirm the timestamp of the first failure?',
+];
+
+const AGENT_FOLLOWUPS = [
+  'Sure, request id is 7f2c-3a91. Customer is on it now.',
+  'Latest one was about 10 minutes ago. Still failing.',
+  'I tried a hard reload — same result.',
+  'Customer says it started after they switched to the new plan.',
+];
+
+const SUPPORT_RESOLUTIONS = [
+  'Found it — config flag was off. Pushed a fix, can you retry?',
+  'Workaround: clear the cache and retry. Permanent fix landing in tomorrow\'s deploy.',
+  'Routed via fallback. Customer should be unblocked.',
+  'Resolved. Filed a KB article so the next agent has it ready.',
+];
+
+const AGENT_CONFIRMATIONS = [
+  'Confirmed working on customer side. Closing out.',
+  'All good — thanks for the quick turnaround.',
+  'Customer is back up. Appreciate the help.',
+];
+
+async function insertMessages(
+  tickets: GeneratedTicket[],
+  users: RoleUsers,
+): Promise<void> {
+  const userLang = new Map<string, string>();
+  for (const a of users.agents) userLang.set(a.id, a.lang);
+  for (const s of users.supports) userLang.set(s.id, s.lang);
+
+  const rows: Array<typeof schema.messages.$inferInsert> = [];
+  for (const t of tickets) {
+    const opener = pick(DEPT_OPENERS[t.dept] ?? DEPT_OPENERS.DSC);
+    const supportResp = pick(SUPPORT_RESPONSES);
+    const agentFollow = pick(AGENT_FOLLOWUPS);
+    const supportFix = pick(SUPPORT_RESOLUTIONS);
+    const includeConfirmation = rand() < 0.7;
+    const agentConfirm = pick(AGENT_CONFIRMATIONS);
+
+    const created = new Date(t.createdAt).getTime();
+    const firstResp = new Date(t.firstStaffResponseAt).getTime();
+    const closed = new Date(t.closedAt).getTime();
+    const span = closed - firstResp;
+    const m2 = firstResp;
+    const m3 = firstResp + Math.floor(span * 0.3);
+    const m4 = firstResp + Math.floor(span * 0.7);
+    const m5 = closed - 60_000;
+
+    rows.push(
+      {
+        id: `seed_dash_m_${t.id}_1`,
+        ticketId: t.id,
+        senderId: t.agentId,
+        senderName: t.agentName,
+        senderRole: 'agent',
+        senderLang: t.agentLang,
+        senderIsExternal: false,
+        text: opener,
+        createdAt: new Date(created).toISOString(),
+        deliveredAt: new Date(created + 1000).toISOString(),
+        readAt: new Date(firstResp).toISOString(),
+      },
+      {
+        id: `seed_dash_m_${t.id}_2`,
+        ticketId: t.id,
+        senderId: t.supportId,
+        senderName: t.supportName,
+        senderRole: 'support',
+        senderLang: t.supportLang,
+        senderIsExternal: false,
+        text: supportResp,
+        createdAt: new Date(m2).toISOString(),
+        deliveredAt: new Date(m2 + 1000).toISOString(),
+        readAt: new Date(m3).toISOString(),
+      },
+      {
+        id: `seed_dash_m_${t.id}_3`,
+        ticketId: t.id,
+        senderId: t.agentId,
+        senderName: t.agentName,
+        senderRole: 'agent',
+        senderLang: t.agentLang,
+        senderIsExternal: false,
+        text: agentFollow,
+        createdAt: new Date(m3).toISOString(),
+        deliveredAt: new Date(m3 + 1000).toISOString(),
+        readAt: new Date(m4).toISOString(),
+      },
+      {
+        id: `seed_dash_m_${t.id}_4`,
+        ticketId: t.id,
+        senderId: t.supportId,
+        senderName: t.supportName,
+        senderRole: 'support',
+        senderLang: t.supportLang,
+        senderIsExternal: false,
+        text: supportFix,
+        createdAt: new Date(m4).toISOString(),
+        deliveredAt: new Date(m4 + 1000).toISOString(),
+        readAt: new Date(m5).toISOString(),
+      },
+    );
+    if (includeConfirmation) {
+      rows.push({
+        id: `seed_dash_m_${t.id}_5`,
+        ticketId: t.id,
+        senderId: t.agentId,
+        senderName: t.agentName,
+        senderRole: 'agent',
+        senderLang: t.agentLang,
+        senderIsExternal: false,
+        text: agentConfirm,
+        createdAt: new Date(m5).toISOString(),
+        deliveredAt: new Date(m5 + 1000).toISOString(),
+        readAt: new Date(closed).toISOString(),
+      });
+    }
+  }
+
+  const CHUNK = 200;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await db.insert(schema.messages).values(rows.slice(i, i + CHUNK)).onConflictDoNothing();
+  }
+}
+
 async function insertAppFeedback(users: RoleUsers, days: Date[]): Promise<void> {
   const allUsers = [...users.agents, ...users.supports];
   const rows: Array<typeof schema.appFeedback.$inferInsert> = [];
@@ -540,6 +688,9 @@ async function main() {
 
   console.log('💬 Inserting app_feedback entries...');
   await insertAppFeedback(users, days);
+
+  console.log('💬 Inserting per-ticket message threads...');
+  await insertMessages(allTickets, users);
 
   console.log('\n✅ Dashboard fixture ready. Reload the admin dashboard.');
   console.log('   Try: 7-day, 30-day presets · per-dept filter · Trends + Heatmap zones.');
