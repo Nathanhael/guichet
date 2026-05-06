@@ -14,7 +14,7 @@
  *   npx tsx scripts/seed_dashboard_data.ts
  */
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import * as schema from '../db/schema.js';
 
@@ -420,26 +420,81 @@ async function upsertDailyStats(buckets: DayBucket[]): Promise<void> {
   }
 }
 
+// Plausible support shifts in UTC. Each support member gets an assigned
+// shift (start hour, length) per weekday so the dashboard's per-(dow, hour)
+// staff coverage cells render with realistic variance — early/late/standard.
+type ShiftKind = 'early' | 'standard' | 'late' | 'split';
+const SHIFT_PATTERNS: Record<ShiftKind, { startHour: number; hours: number }[]> = {
+  early: [{ startHour: 6, hours: 8 }],
+  standard: [{ startHour: 9, hours: 8 }],
+  late: [{ startHour: 12, hours: 8 }],
+  split: [{ startHour: 7, hours: 4 }, { startHour: 14, hours: 4 }],
+};
+
+function buildHourlyOnlineForShifts(
+  shifts: { startHour: number; hours: number }[],
+  isWeekend: boolean,
+): { hourly: number[]; awaySeconds: number } {
+  const hourly = Array.from({ length: 24 }, () => 0);
+  if (isWeekend && rand() > 0.3) {
+    // 70% chance the support is fully off on the weekend.
+    return { hourly, awaySeconds: 0 };
+  }
+  for (const shift of shifts) {
+    const length = isWeekend ? Math.max(1, Math.round(shift.hours * 0.4)) : shift.hours;
+    for (let i = 0; i < length; i++) {
+      const hour = (shift.startHour + i) % 24;
+      // Don't paint the full hour for the trailing slot — leaves a realistic
+      // tail of partial coverage at shift boundaries.
+      const seconds = i === length - 1 ? Math.round(rng(1500, 3300)) : 3600;
+      hourly[hour] = Math.max(hourly[hour], seconds);
+    }
+  }
+  // Pretend one of the cells took an "away" break of 15-30 min.
+  const totalShiftHours = shifts.reduce((s, sh) => s + sh.hours, 0);
+  const awaySeconds = Math.round(totalShiftHours * rng(0.05, 0.12) * 3600);
+  return { hourly, awaySeconds };
+}
+
 async function upsertAgentDailyStatus(buckets: DayBucket[], supports: RoleUsers['supports']): Promise<void> {
+  // Stable shift assignment per support — pick once, use for all days.
+  const shiftKinds: ShiftKind[] = ['early', 'standard', 'late', 'split'];
+  const supportShift = new Map<string, ShiftKind>();
+  for (let i = 0; i < supports.length; i++) {
+    supportShift.set(supports[i].id, shiftKinds[i % shiftKinds.length]);
+  }
+
   const rows: Array<typeof schema.dailyAgentStatus.$inferInsert> = [];
   for (const b of buckets) {
     const dow = new Date(`${b.date}T00:00:00Z`).getUTCDay();
     const isWeekend = dow === 0 || dow === 6;
     for (const s of supports) {
-      const onlineHours = isWeekend ? rng(0, 2) : rng(6, 8.5);
-      const awayHours = isWeekend ? rng(0, 0.5) : rng(0.5, 1.5);
+      const kind = supportShift.get(s.id) ?? 'standard';
+      const { hourly, awaySeconds } = buildHourlyOnlineForShifts(SHIFT_PATTERNS[kind], isWeekend);
+      const onlineSeconds = hourly.reduce((acc, n) => acc + n, 0);
       rows.push({
         date: b.date,
         userId: s.id,
         partnerId: PARTNER_ID,
-        onlineSeconds: Math.round(onlineHours * 3600),
-        awaySeconds: Math.round(awayHours * 3600),
+        onlineSeconds,
+        awaySeconds,
+        hourlyOnlineSeconds: hourly,
       });
     }
   }
   const CHUNK = 200;
   for (let i = 0; i < rows.length; i += CHUNK) {
-    await db.insert(schema.dailyAgentStatus).values(rows.slice(i, i + CHUNK)).onConflictDoNothing();
+    await db
+      .insert(schema.dailyAgentStatus)
+      .values(rows.slice(i, i + CHUNK))
+      .onConflictDoUpdate({
+        target: [schema.dailyAgentStatus.date, schema.dailyAgentStatus.userId, schema.dailyAgentStatus.partnerId],
+        set: {
+          onlineSeconds: sql`EXCLUDED.online_seconds`,
+          awaySeconds: sql`EXCLUDED.away_seconds`,
+          hourlyOnlineSeconds: sql`EXCLUDED.hourly_online_seconds`,
+        },
+      });
   }
 }
 
