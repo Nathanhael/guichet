@@ -46,6 +46,17 @@ export const partners = pgTable('partners', {
     firstName?: string;
     lastName?: string;
   } | null>(),
+  // Partner-tunable dashboard knobs. Currently:
+  //   - ticketsPerStaffPerHour: capacity threshold above which the staffing-fit
+  //     zone flags a (dow, hour) cell as understaffed. Default applied at the
+  //     read site (5 tickets/h/staff — a chat-support typical with 2-3 parallel
+  //     chats). Phone-heavy partners drop it to 1-2; async/email partners can
+  //     push it to 10+.
+  // Shape kept as JSONB so future dashboard knobs can land without a migration.
+  dashboardConfig: jsonb('dashboard_config')
+    .$type<{ ticketsPerStaffPerHour?: number }>()
+    .notNull()
+    .default({}),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
