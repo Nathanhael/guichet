@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Download, Inbox } from 'lucide-react';
+import { X, Download, Inbox, ArrowDown, ArrowUp, Star } from 'lucide-react';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
@@ -11,6 +11,29 @@ const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[
 const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 const SELECT = 'h-9 pl-3 pr-8 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent hover:border-[var(--color-border)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer';
 const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+const COL_HEAD_SORTABLE = `${COL_HEAD} cursor-pointer select-none hover:text-[var(--color-ink)]`;
+
+type SortKey = 'created' | 'duration' | 'rating';
+type SortDir = 'asc' | 'desc';
+
+function durationMinutes(t: Ticket): number | null {
+  if (!t.closedAt || !t.createdAt) return null;
+  return Math.round((new Date(t.closedAt).getTime() - new Date(t.createdAt).getTime()) / 60000);
+}
+
+function formatDuration(min: number | null): string {
+  if (min === null) return '—';
+  return min < 60 ? `${min}m` : `${Math.floor(min / 60)}h ${min % 60}m`;
+}
+
+function formatTimestamp(iso?: string | null): string {
+  return iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+}
+
+function truncate(text: string, max = 80): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1).trimEnd() + '…';
+}
 
 export default function AdminArchive() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -26,6 +49,8 @@ export default function AdminArchive() {
   const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [labelFilter, setLabelFilter] = useState('all');
   const [supportFilter, setSupportFilter] = useState<'all' | 'none' | string>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('created');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const t = useT();
 
   const { data: allLabels = [] } = trpc.label.list.useQuery();
@@ -80,30 +105,50 @@ export default function AdminArchive() {
     setHasMore(false);
   }
 
-  function duration(tk: Ticket) {
-    if (!tk.closedAt || !tk.createdAt) return '—';
-    const m = Math.round((new Date(tk.closedAt).getTime() - new Date(tk.createdAt).getTime()) / 60000);
-    return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
-  }
-
-  function fmt(iso?: string) {
-    return iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+      return;
+    }
+    setSortKey(key);
+    setSortDir('desc');
   }
 
   const loading = ticketsQuery.isFetching;
 
-  const filteredTickets = tickets.filter((ticket) => {
-    if (labelFilter === 'all') return true;
-    if (labelFilter === 'none') return !ticket.labels || (ticket.labels as string[]).length === 0;
-    if (labelFilter === 'any') return ticket.labels && (ticket.labels as string[]).length > 0;
-    return ticket.labels && (ticket.labels as string[]).includes(labelFilter);
-  });
+  const filteredTickets = useMemo(() => {
+    const labelFiltered = tickets.filter((ticket) => {
+      if (labelFilter === 'all') return true;
+      if (labelFilter === 'none') return !ticket.labels || (ticket.labels as string[]).length === 0;
+      if (labelFilter === 'any') return ticket.labels && (ticket.labels as string[]).length > 0;
+      return ticket.labels && (ticket.labels as string[]).includes(labelFilter);
+    });
+
+    const sortedKeys = labelFiltered.slice();
+    sortedKeys.sort((a, b) => {
+      let av: number;
+      let bv: number;
+      if (sortKey === 'created') {
+        av = new Date(a.createdAt).getTime();
+        bv = new Date(b.createdAt).getTime();
+      } else if (sortKey === 'duration') {
+        av = durationMinutes(a) ?? -Infinity;
+        bv = durationMinutes(b) ?? -Infinity;
+      } else {
+        av = a.rating ?? -Infinity;
+        bv = b.rating ?? -Infinity;
+      }
+      const diff = av - bv;
+      return sortDir === 'desc' ? -diff : diff;
+    });
+    return sortedKeys;
+  }, [tickets, labelFilter, sortKey, sortDir]);
 
   return (
-    <div className="flex flex-col p-6 min-h-full overflow-x-hidden">
-      <div className="flex-1 min-w-0">
+    <div className="h-full flex flex-col p-6 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 min-w-0">
         {/* Header + Filters */}
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <div className="shrink-0 flex items-center gap-3 mb-5 flex-wrap">
           <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)] mr-auto">{t('archive')}</h2>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -193,9 +238,9 @@ export default function AdminArchive() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="overflow-x-auto">
+        {/* Table card — fills remaining height with internal scroll */}
+        <div className={`${CARD} flex-1 min-h-0 flex flex-col overflow-hidden`}>
+          <div className="flex-1 min-h-0 overflow-auto">
             {filteredTickets.length === 0 && !loading ? (
               <div className="flex flex-col items-center justify-center py-20 text-[var(--color-ink-muted)]">
                 <Inbox className="h-10 w-10 opacity-50 mb-3" strokeWidth={1.5} />
@@ -203,64 +248,111 @@ export default function AdminArchive() {
               </div>
             ) : (
               <table className="w-full text-[13px] border-collapse">
-                <thead>
+                <thead className="sticky top-0 bg-[var(--color-bg-surface)] z-10">
                   <tr className="border-b border-[var(--color-border)]">
                     <th className={COL_HEAD}>{t('col_dept')}</th>
-                    <th className={COL_HEAD}>{t('col_agent')}</th>
+                    <th className={COL_HEAD}>{t('archive_col_title')}</th>
                     <th className={COL_HEAD}>{t('archive_col_ref')}</th>
                     <th className={COL_HEAD}>{t('col_support')}</th>
                     <th className={COL_HEAD}>{t('labels')}</th>
-                    <th className={COL_HEAD}>{t('archive_col_duration')}</th>
-                    <th className={COL_HEAD}>{t('col_created')}</th>
+                    <SortableHeader
+                      label={t('archive_col_rating')}
+                      active={sortKey === 'rating'}
+                      dir={sortDir}
+                      onClick={() => toggleSort('rating')}
+                    />
+                    <SortableHeader
+                      label={t('archive_col_duration')}
+                      active={sortKey === 'duration'}
+                      dir={sortDir}
+                      onClick={() => toggleSort('duration')}
+                    />
+                    <SortableHeader
+                      label={t('col_created')}
+                      active={sortKey === 'created'}
+                      dir={sortDir}
+                      onClick={() => toggleSort('created')}
+                    />
                     <th className={COL_HEAD}>{t('col_closed')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  {filteredTickets.map((ticket) => (
-                    <tr
-                      key={ticket.id}
-                      onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
-                      className={`cursor-pointer transition-colors ${preview?.id === ticket.id ? 'bg-[var(--color-accent-soft)]' : 'hover:bg-[var(--color-hover)]'}`}
-                    >
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)]">{ticket.dept}</span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-[var(--color-ink)]">{ticket.agentName}</td>
-                      <td className="px-4 py-3 text-[12px] text-[var(--color-ink-muted)]">
-                        {(ticket.references as Array<{label: string; value: string}> || []).length > 0
-                          ? (ticket.references as Array<{label: string; value: string}> || []).map((ref) => (
-                              <span key={ref.label} className="mr-3 whitespace-nowrap">
-                                <span className="text-[var(--color-ink-muted)]">{ref.label}:</span>{' '}
-                                <span className="font-mono text-[var(--color-ink)]">{ref.value}</span>
-                              </span>
-                            ))
-                          : <span className="text-[var(--color-ink-muted)] opacity-50">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-[var(--color-ink-soft)]">
-                        {ticket.supportName || <span className="italic text-[var(--color-ink-muted)]">{t('archive_abandoned_inline')}</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        {ticket.labels && (ticket.labels as string[]).length > 0 ? (
-                          <div className="flex gap-1 flex-wrap">
-                            {(ticket.labels as string[]).map((id) => {
-                              const info = allLabels.find((l) => l.id === id);
-                              if (!info) return null;
-                              return <span key={id} className="text-[11px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)]">{info.name}</span>;
-                            })}
-                          </div>
-                        ) : <span className="text-[var(--color-ink-muted)] opacity-50">—</span>}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-[12px] text-[var(--color-ink-soft)] tabular-nums">{duration(ticket)}</td>
-                      <td className="px-4 py-3 text-[12px] text-[var(--color-ink-muted)] whitespace-nowrap tabular-nums">{fmt(ticket.createdAt)}</td>
-                      <td className="px-4 py-3 text-[12px] text-[var(--color-ink-muted)] whitespace-nowrap tabular-nums">{fmt(ticket.closedAt || undefined)}</td>
-                    </tr>
-                  ))}
+                  {filteredTickets.map((ticket) => {
+                    const isAbandoned = !ticket.supportId;
+                    const titleText = ticket.firstMessage ?? ticket.agentName ?? ticket.id;
+                    const isSelected = preview?.id === ticket.id;
+                    const rowClass = isSelected
+                      ? 'bg-[var(--color-accent-soft)]'
+                      : isAbandoned
+                        ? 'bg-[var(--color-bg-elevated)]/50 hover:bg-[var(--color-hover)]'
+                        : 'hover:bg-[var(--color-hover)]';
+                    return (
+                      <tr
+                        key={ticket.id}
+                        onClick={() => setPreview(isSelected ? null : ticket)}
+                        className={`cursor-pointer transition-colors ${rowClass}`}
+                      >
+                        <td className="px-4 py-3 align-middle">
+                          <span className="text-[11px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)]">{ticket.dept}</span>
+                        </td>
+                        <td className="px-4 py-3 align-middle max-w-[28ch]">
+                          <span
+                            className="block truncate text-[var(--color-ink)]"
+                            title={titleText}
+                          >
+                            {truncate(titleText, 80)}
+                          </span>
+                          <span className="block text-[11px] text-[var(--color-ink-muted)] truncate">
+                            {ticket.agentName}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 align-middle text-[12px] text-[var(--color-ink-muted)]">
+                          {(ticket.references as Array<{label: string; value: string}> || []).length > 0
+                            ? (ticket.references as Array<{label: string; value: string}> || []).map((ref) => (
+                                <span key={ref.label} className="mr-3 whitespace-nowrap">
+                                  <span className="text-[var(--color-ink-muted)]">{ref.label}:</span>{' '}
+                                  <span className="font-mono text-[var(--color-ink)]">{ref.value}</span>
+                                </span>
+                              ))
+                            : <span className="text-[var(--color-ink-muted)] opacity-50">—</span>}
+                        </td>
+                        <td className="px-4 py-3 align-middle text-[13px] text-[var(--color-ink-soft)]">
+                          {ticket.supportName || <span className="italic text-[var(--color-ink-muted)]">{t('archive_abandoned_inline')}</span>}
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          {ticket.labels && (ticket.labels as string[]).length > 0 ? (
+                            <div className="flex gap-1 flex-wrap">
+                              {(ticket.labels as string[]).map((id) => {
+                                const info = allLabels.find((l) => l.id === id);
+                                if (!info) return null;
+                                return <span key={id} className="text-[11px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)]">{info.name}</span>;
+                              })}
+                            </div>
+                          ) : <span className="text-[var(--color-ink-muted)] opacity-50">—</span>}
+                        </td>
+                        <td className="px-4 py-3 align-middle font-mono text-[12px] tabular-nums">
+                          <RatingCell rating={ticket.rating ?? null} />
+                        </td>
+                        <td className="px-4 py-3 align-middle font-mono text-[12px] text-[var(--color-ink-soft)] tabular-nums">
+                          {formatDuration(durationMinutes(ticket))}
+                        </td>
+                        <td className="px-4 py-3 align-middle text-[12px] text-[var(--color-ink-muted)] whitespace-nowrap tabular-nums">
+                          {formatTimestamp(ticket.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 align-middle text-[12px] whitespace-nowrap tabular-nums">
+                          {ticket.closedAt
+                            ? <span className="text-[var(--color-ink-muted)]">{formatTimestamp(ticket.closedAt)}</span>
+                            : <span className="italic text-[var(--color-ink-muted)] opacity-70">{t('archive_no_close_inline')}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
           </div>
 
-          <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between bg-[var(--color-bg-elevated)]">
+          <div className="shrink-0 px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between bg-[var(--color-bg-elevated)]">
             <span className="text-[12px] text-[var(--color-ink-muted)]">{t('archive_chats_loaded').replace('{count}', String(tickets.length))}</span>
             {hasMore && (
               <button
@@ -289,9 +381,10 @@ export default function AdminArchive() {
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-[11px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)]">{preview.dept}</span>
                   <span className="text-[15px] font-semibold text-[var(--color-ink)]">{preview.agentName}</span>
+                  {preview.rating != null && <RatingCell rating={preview.rating} />}
                 </div>
                 <p className="text-[12px] text-[var(--color-ink-muted)]">
-                  {preview.supportName ? `${t('support_prefix')} ${preview.supportName}` : t('archive_no_support_joined')} · {duration(preview)}
+                  {preview.supportName ? `${t('support_prefix')} ${preview.supportName}` : t('archive_no_support_joined')} · {formatDuration(durationMinutes(preview))}
                 </p>
                 {preview.labels && (preview.labels as string[]).length > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
@@ -344,5 +437,35 @@ export default function AdminArchive() {
         </div>
       )}
     </div>
+  );
+}
+
+interface SortableHeaderProps {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}
+
+function SortableHeader({ label, active, dir, onClick }: SortableHeaderProps) {
+  const Icon = dir === 'desc' ? ArrowDown : ArrowUp;
+  return (
+    <th onClick={onClick} className={COL_HEAD_SORTABLE}>
+      <span className={`inline-flex items-center gap-1 ${active ? 'text-[var(--color-ink)]' : ''}`}>
+        {label}
+        {active && <Icon className="h-3 w-3" strokeWidth={2.5} />}
+      </span>
+    </th>
+  );
+}
+
+function RatingCell({ rating }: { rating: number | null }) {
+  if (rating == null) return <span className="text-[var(--color-ink-muted)] opacity-50">—</span>;
+  const tone = rating >= 4 ? 'text-[var(--color-ok,#22c55e)]' : rating >= 3 ? 'text-[var(--color-accent-amber,#f59e0b)]' : 'text-[var(--color-urgent,#ef4444)]';
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${tone}`}>
+      <Star className="h-3 w-3 fill-current" strokeWidth={0} />
+      <span className="font-mono">{rating.toFixed(1)}</span>
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure, partnerScopedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { tickets, ticketLabels } from '../../db/schema.js';
+import { messages, ratings, tickets, ticketLabels } from '../../db/schema.js';
 import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
@@ -17,6 +17,50 @@ async function fetchLabelsForTickets(ticketIds: string[]): Promise<Record<string
   for (const row of rows) {
     if (!map[row.ticketId]) map[row.ticketId] = [];
     map[row.ticketId].push(row.labelId);
+  }
+  return map;
+}
+
+/**
+ * First non-system, non-deleted message text per ticket — used by the Archive
+ * panel as a row preview / title so admins can scan a list of closed tickets
+ * without opening each one. One SELECT per page (≤ ~25 tickets), DISTINCT ON
+ * keeps it to a single round-trip with index-friendly ordering.
+ */
+async function fetchFirstMessagesForTickets(ticketIds: string[]): Promise<Record<string, string>> {
+  if (ticketIds.length === 0) return {};
+  const rows = await db
+    .selectDistinctOn([messages.ticketId], {
+      ticketId: messages.ticketId,
+      text: messages.text,
+    })
+    .from(messages)
+    .where(
+      and(
+        inArray(messages.ticketId, ticketIds),
+        isNull(messages.deletedAt),
+        eq(messages.system, 0),
+      ),
+    )
+    .orderBy(messages.ticketId, asc(messages.createdAt));
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.ticketId] = r.text ?? '';
+  return map;
+}
+
+/**
+ * CSAT rating per ticket — only one rating per ticket (unique index), so the
+ * map is a flat ticketId → 1-5 lookup.
+ */
+async function fetchRatingsForTickets(ticketIds: string[]): Promise<Record<string, number>> {
+  if (ticketIds.length === 0) return {};
+  const rows = await db
+    .select({ ticketId: ratings.ticketId, rating: ratings.rating })
+    .from(ratings)
+    .where(inArray(ratings.ticketId, ticketIds));
+  const map: Record<string, number> = {};
+  for (const r of rows) {
+    if (r.ticketId) map[r.ticketId] = r.rating;
   }
   return map;
 }
@@ -145,12 +189,24 @@ export const ticketRouter = router({
           if (pageRows.length === 0) return { tickets: [], nextCursor: '' };
 
           const ticketIds = pageRows.map(t => t.id);
-          const labelsMap = await fetchLabelsForTickets(ticketIds);
+          const [labelsMap, firstMessageMap, ratingMap] = await Promise.all([
+            fetchLabelsForTickets(ticketIds),
+            // Archive-style queries (terminal status) get extra enrichment;
+            // live queues skip it to keep the queue render path lean.
+            isTerminal
+              ? fetchFirstMessagesForTickets(ticketIds)
+              : Promise.resolve({} as Record<string, string>),
+            isTerminal
+              ? fetchRatingsForTickets(ticketIds)
+              : Promise.resolve({} as Record<string, number>),
+          ]);
 
           const ticketsWithLabels = pageRows.map(t => ({
             ...t,
             participants: t.participants || [],
             labels: labelsMap[t.id] || [],
+            firstMessage: firstMessageMap[t.id] ?? null,
+            rating: ratingMap[t.id] ?? null,
           }));
 
           const lastItem = pageRows[pageRows.length - 1];
