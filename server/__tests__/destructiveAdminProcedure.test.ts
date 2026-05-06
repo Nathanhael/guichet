@@ -200,5 +200,43 @@ describe('post-#71 capability-gate enforcement (source-level)', () => {
       const re = /\bupdateAiCustomization:\s*adminProcedure[\s\S]{0,3000}?trpcActor\(\s*ctx\s*,\s*\{\s*capability:\s*['"]destructive_admin['"]/;
       expect(configSource).toMatch(re);
     });
+
+    it('updateBusinessHours body asserts destructive_admin capability inline', () => {
+      const re = /\bupdateBusinessHours:\s*adminProcedure[\s\S]{0,2000}?trpcActor\(\s*ctx\s*,\s*\{\s*capability:\s*['"]destructive_admin['"]/;
+      expect(configSource).toMatch(re);
+    });
+  });
+
+  describe('label router edit ops are guest-gated', () => {
+    const labelSource = fs.readFileSync(
+      path.resolve(__dirname, '../trpc/routers/label.ts'), 'utf-8',
+    );
+    it.each([['create'], ['update'], ['delete']])(
+      'label.%s body asserts destructive_admin capability inline',
+      (op) => {
+        const re = new RegExp(
+          `\\b${op}:\\s*adminProcedure[\\s\\S]{0,2000}?trpcActor\\(\\s*ctx\\s*,\\s*\\{\\s*capability:\\s*['"]destructive_admin['"]`,
+        );
+        expect(labelSource).toMatch(re);
+      },
+    );
+  });
+
+  describe('cannedResponse router edit ops are guest-gated', () => {
+    const cannedSource = fs.readFileSync(
+      path.resolve(__dirname, '../trpc/routers/cannedResponse.ts'), 'utf-8',
+    );
+    it.each([
+      ['create'],
+      ['update'],
+      ['delete'],
+      ['regenerate'],
+      ['backfillUntranslated'],
+    ])('cannedResponse.%s body asserts destructive_admin capability inline', (op) => {
+      const re = new RegExp(
+        `\\b${op}:\\s*partnerAdminProcedure[\\s\\S]{0,3000}?trpcActor\\(\\s*ctx\\s*,\\s*\\{\\s*capability:\\s*['"]destructive_admin['"]`,
+      );
+      expect(cannedSource).toMatch(re);
+    });
   });
 });

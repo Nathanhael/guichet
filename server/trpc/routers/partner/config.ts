@@ -237,6 +237,7 @@ export const partnerConfigRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
+        trpcActor(ctx, { capability: 'destructive_admin' });
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 

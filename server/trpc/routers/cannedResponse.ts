@@ -6,6 +6,7 @@ import { cannedResponses, tickets } from '../../db/schema.js';
 import { eq, and, asc, isNull, or } from 'drizzle-orm';
 import { notFound, conflict } from '../../utils/trpcErrors.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
+import { trpcActor } from '../../services/auth/index.js';
 import {
   translateCanned,
   isCannedTranslationEnabled,
@@ -63,6 +64,7 @@ export const cannedResponseRouter = router({
       sourceLang: langEnum.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      trpcActor(ctx, { capability: 'destructive_admin' });
       // Validate shortcut uniqueness within partner
       if (input.shortcut) {
         const existing = await db
@@ -149,6 +151,7 @@ export const cannedResponseRouter = router({
       }).strict().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      trpcActor(ctx, { capability: 'destructive_admin' });
       const [existing] = await db
         .select({
           id: cannedResponses.id,
@@ -247,6 +250,7 @@ export const cannedResponseRouter = router({
       langs: z.array(langEnum).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      trpcActor(ctx, { capability: 'destructive_admin' });
       if (!(await isCannedTranslationEnabled(ctx.user.partnerId))) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -390,6 +394,7 @@ export const cannedResponseRouter = router({
    */
   backfillUntranslated: partnerAdminProcedure
     .mutation(async ({ ctx }) => {
+      trpcActor(ctx, { capability: 'destructive_admin' });
       if (!(await isCannedTranslationEnabled(ctx.user.partnerId))) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -443,6 +448,7 @@ export const cannedResponseRouter = router({
   delete: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      trpcActor(ctx, { capability: 'destructive_admin' });
       await db
         .delete(cannedResponses)
         .where(and(eq(cannedResponses.id, input.id), eq(cannedResponses.partnerId, ctx.user.partnerId)));
