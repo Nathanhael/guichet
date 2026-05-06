@@ -47,7 +47,7 @@ function mulberry32(seed: number) {
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rand = mulberry32(0xacme1234);
+const rand = mulberry32(0xace1234);
 const pick = <T>(arr: T[]): T => arr[Math.floor(rand() * arr.length)];
 const rng = (min: number, max: number) => min + rand() * (max - min);
 const rngi = (min: number, max: number) => Math.floor(rng(min, max + 1));
