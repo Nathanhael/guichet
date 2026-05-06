@@ -21,6 +21,13 @@ export interface DailyStats {
   partnerId: string;
   onlineSeconds: number;
   awaySeconds: number;
+  /**
+   * 24-element array of seconds the user spent in `online` status during each
+   * hour-of-day bucket (UTC). Sum equals onlineSeconds. Used by the dashboard
+   * staffing-fit zone to compute per-(dow, hour) staff coverage rather than
+   * broadcasting the daily total to every hour.
+   */
+  hourlyOnlineSeconds: number[];
 }
 
 /** Used by `advanced.onlineUsers` for legacy callers (presence.getOnlineUsersForPartner). */

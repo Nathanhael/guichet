@@ -26,6 +26,13 @@ export interface AgentStatusRow {
   date: string;
   userId: string;
   onlineSeconds: number;
+  /**
+   * 24-element array: seconds the user spent online during each hour-of-day
+   * bucket (UTC). Sum equals onlineSeconds. When omitted (legacy rows) the
+   * deep service falls back to broadcasting the daily total across all 24
+   * hours, preserving the pre-migration behavior.
+   */
+  hourlyOnlineSeconds?: number[];
 }
 
 export interface StaffingHeatmapInput {
@@ -99,37 +106,79 @@ export function buildStaffingHeatmap(input: StaffingHeatmapInput): StaffingHeatm
     }
   }
 
-  // Staff overlay (Z3b) — per-dow average distinct online users across the
-  // 28-day window. Daily granularity from `daily_agent_status`; we apply the
-  // same per-dow figure to every hour of that dow because the rollup table
-  // doesn't carry hourly resolution. When agentStatus rows are provided, we
-  // also surface cells for hours with zero tickets so admins can spot
-  // over-staffing on quiet hours.
+  // Staff overlay (Z3b) — per-(dow, hour) average distinct online users across
+  // the window. Modern rows carry `hourlyOnlineSeconds` (24-element array) so
+  // we count "users online in hour H of weekday D" precisely; legacy rows
+  // without the array fall back to broadcasting the daily total across all
+  // 24 hours so the dashboard keeps rendering during the migration window.
   const filteredAgents = (input.agentStatus ?? []).filter(
     (r) =>
       r.onlineSeconds > 0 &&
       dateInWindow(r.date, input.window.from, input.window.to) &&
       (!input.excludeWeekends || !WEEKEND_DOWS.has(dowFor(r.date))),
   );
-  const usersPerDate = new Map<string, Set<string>>();
+
+  // For each (dow, hour) cell: collect the set of distinct users online
+  // per date, then average across the dates with that dow.
+  const usersPerDateHour = new Map<string, Map<number, Set<string>>>();
+  const datesByDow = new Map<number, Set<string>>();
   for (const r of filteredAgents) {
-    let set = usersPerDate.get(r.date);
-    if (!set) {
-      set = new Set();
-      usersPerDate.set(r.date, set);
+    const dow = dowFor(r.date);
+    let dowDates = datesByDow.get(dow);
+    if (!dowDates) {
+      dowDates = new Set();
+      datesByDow.set(dow, dowDates);
     }
-    set.add(r.userId);
+    dowDates.add(r.date);
+
+    let perHour = usersPerDateHour.get(r.date);
+    if (!perHour) {
+      perHour = new Map();
+      usersPerDateHour.set(r.date, perHour);
+    }
+
+    const hourly = r.hourlyOnlineSeconds;
+    if (Array.isArray(hourly) && hourly.length === HOURS) {
+      // Precise per-hour attribution.
+      for (let hour = 0; hour < HOURS; hour++) {
+        if ((hourly[hour] ?? 0) <= 0) continue;
+        let set = perHour.get(hour);
+        if (!set) {
+          set = new Set();
+          perHour.set(hour, set);
+        }
+        set.add(r.userId);
+      }
+    } else {
+      // Legacy fallback: broadcast user across all 24 hours of this date.
+      for (let hour = 0; hour < HOURS; hour++) {
+        let set = perHour.get(hour);
+        if (!set) {
+          set = new Set();
+          perHour.set(hour, set);
+        }
+        set.add(r.userId);
+      }
+    }
   }
-  const staffSumByDow = new Map<number, number>();
-  const staffCountByDow = new Map<number, number>();
-  for (const [date, users] of usersPerDate.entries()) {
+
+  // Aggregate (dow, hour) -> sum of distinct users / count of dates with that dow.
+  const staffSumByCell = new Map<string, number>();
+  for (const [date, perHour] of usersPerDateHour.entries()) {
     const dow = dowFor(date);
-    staffSumByDow.set(dow, (staffSumByDow.get(dow) ?? 0) + users.size);
-    staffCountByDow.set(dow, (staffCountByDow.get(dow) ?? 0) + 1);
+    for (let hour = 0; hour < HOURS; hour++) {
+      const set = perHour.get(hour);
+      if (!set || set.size === 0) continue;
+      const k = key(dow, hour);
+      staffSumByCell.set(k, (staffSumByCell.get(k) ?? 0) + set.size);
+    }
   }
-  const staffByDow = new Map<number, number>();
-  for (const [dow, sum] of staffSumByDow.entries()) {
-    staffByDow.set(dow, round1(sum / staffCountByDow.get(dow)!));
+  const staffByCell = new Map<string, number>();
+  for (const [k, sum] of staffSumByCell.entries()) {
+    const [dowStr] = k.split(':');
+    const dow = Number(dowStr);
+    const dateCount = datesByDow.get(dow)?.size ?? 1;
+    staffByCell.set(k, round1(sum / dateCount));
   }
 
   const heatmap: HeatmapCell[] = [];
@@ -141,17 +190,19 @@ export function buildStaffingHeatmap(input: StaffingHeatmapInput): StaffingHeatm
     const dow = Number(dowStr);
     const hour = Number(hourStr);
     const cell: HeatmapCell = { dow, hour, tickets: round1(sum / count) };
-    const staff = staffByDow.get(dow);
+    const staff = staffByCell.get(k);
     if (staff !== undefined) cell.staff = staff;
     heatmap.push(cell);
     emitted.add(k);
   }
   // For each dow with staff data, ensure all 24 hours surface — staff overlay
-  // is useful even where ticket volume is zero.
-  for (const [dow, staff] of staffByDow.entries()) {
+  // is useful even where ticket volume is zero. Cells with no staff in that
+  // hour now report `staff: 0` honestly instead of a broadcast daily figure.
+  for (const dow of datesByDow.keys()) {
     for (let hour = 0; hour < HOURS; hour++) {
       const k = `${dow}:${hour}`;
       if (emitted.has(k)) continue;
+      const staff = staffByCell.get(k) ?? 0;
       heatmap.push({ dow, hour, tickets: 0, staff });
     }
   }

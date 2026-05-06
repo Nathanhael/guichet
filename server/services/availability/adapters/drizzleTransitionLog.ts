@@ -114,26 +114,72 @@ export class DrizzleTransitionLog implements TransitionLogPort {
       gte(sql`COALESCE(${schema.agentStatusLog.endedAt}, NOW()::timestamp)`, sql`${dayStart}::timestamp`),
     ));
 
-    const userTotals = new Map<string, Record<string, number>>();
+    interface UserTotals {
+      online: number;
+      away: number;
+      hourlyOnline: number[];
+    }
+    const userTotals = new Map<string, UserTotals>();
+    const dayStartMs = new Date(dayStart).getTime();
+    const dayEndMs = new Date(dayEnd).getTime();
+
     for (const row of rows) {
-      const start = new Date(Math.max(new Date(row.startedAt).getTime(), new Date(dayStart).getTime()));
-      const end = row.endedAt
-        ? new Date(Math.min(new Date(row.endedAt).getTime(), new Date(dayEnd).getTime()))
-        : new Date(Math.min(Date.now(), new Date(dayEnd).getTime()));
-      const seconds = Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000));
-      if (!userTotals.has(row.userId)) userTotals.set(row.userId, { online: 0, away: 0 });
-      const t = userTotals.get(row.userId)!;
-      if (t[row.status] !== undefined) t[row.status] += seconds;
+      const startMs = Math.max(new Date(row.startedAt).getTime(), dayStartMs);
+      const endMs = Math.min(
+        row.endedAt ? new Date(row.endedAt).getTime() : Date.now(),
+        dayEndMs,
+      );
+      if (endMs <= startMs) continue;
+
+      let totals = userTotals.get(row.userId);
+      if (!totals) {
+        totals = { online: 0, away: 0, hourlyOnline: Array.from({ length: 24 }, () => 0) };
+        userTotals.set(row.userId, totals);
+      }
+
+      // Bucket the period's seconds into the hour-of-day slots it overlaps
+      // (UTC). For 'online' rows, distribute into hourlyOnline; daily totals
+      // are summed regardless of status.
+      let cursor = startMs;
+      while (cursor < endMs) {
+        const cursorDate = new Date(cursor);
+        const hour = cursorDate.getUTCHours();
+        const hourEndMs = Date.UTC(
+          cursorDate.getUTCFullYear(),
+          cursorDate.getUTCMonth(),
+          cursorDate.getUTCDate(),
+          hour + 1,
+          0,
+          0,
+          0,
+        );
+        const sliceEnd = Math.min(hourEndMs, endMs);
+        const seconds = Math.round((sliceEnd - cursor) / 1000);
+        if (seconds > 0 && row.status === 'online') {
+          totals.hourlyOnline[hour] += seconds;
+        }
+        cursor = sliceEnd;
+      }
+
+      const totalSeconds = Math.max(0, Math.round((endMs - startMs) / 1000));
+      if (row.status === 'online') totals.online += totalSeconds;
+      else if (row.status === 'away') totals.away += totalSeconds;
     }
 
     let rowsWritten = 0;
     for (const [userId, totals] of userTotals) {
       await db.insert(schema.dailyAgentStatus).values({
         date: dateStr, userId, partnerId,
-        onlineSeconds: totals.online, awaySeconds: totals.away,
+        onlineSeconds: totals.online,
+        awaySeconds: totals.away,
+        hourlyOnlineSeconds: totals.hourlyOnline,
       }).onConflictDoUpdate({
         target: [schema.dailyAgentStatus.date, schema.dailyAgentStatus.userId, schema.dailyAgentStatus.partnerId],
-        set: { onlineSeconds: sql`EXCLUDED.online_seconds`, awaySeconds: sql`EXCLUDED.away_seconds` },
+        set: {
+          onlineSeconds: sql`EXCLUDED.online_seconds`,
+          awaySeconds: sql`EXCLUDED.away_seconds`,
+          hourlyOnlineSeconds: sql`EXCLUDED.hourly_online_seconds`,
+        },
       });
       rowsWritten++;
     }
@@ -152,6 +198,7 @@ export class DrizzleTransitionLog implements TransitionLogPort {
     return rows.map(r => ({
       date: r.date, userId: r.userId, partnerId: r.partnerId,
       onlineSeconds: r.onlineSeconds, awaySeconds: r.awaySeconds,
+      hourlyOnlineSeconds: coerceHourlyArray(r.hourlyOnlineSeconds),
     }));
   }
 
@@ -165,6 +212,23 @@ export class DrizzleTransitionLog implements TransitionLogPort {
     return rows.map(r => ({
       date: r.date, userId: r.userId, partnerId: r.partnerId,
       onlineSeconds: r.onlineSeconds, awaySeconds: r.awaySeconds,
+      hourlyOnlineSeconds: coerceHourlyArray(r.hourlyOnlineSeconds),
     }));
   }
+}
+
+/**
+ * Defensive coercion of `hourly_online_seconds` JSONB. The column is `notNull`
+ * with a 24-zero default, but legacy rows written before migration 0016 may
+ * still surface in tests fixtures or external imports.
+ */
+function coerceHourlyArray(value: unknown): number[] {
+  const out = Array.from({ length: 24 }, () => 0);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < 24; i++) {
+      const n = Number(value[i]);
+      if (Number.isFinite(n)) out[i] = n;
+    }
+  }
+  return out;
 }

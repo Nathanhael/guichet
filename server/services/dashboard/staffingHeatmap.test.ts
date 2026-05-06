@@ -177,12 +177,29 @@ describe('buildStaffingHeatmap', () => {
   });
 });
 
-describe('buildStaffingHeatmap — staff overlay', () => {
+describe('buildStaffingHeatmap — staff overlay (hourly resolution)', () => {
+  // Hourly seconds where the user is online for ONE hour at `hour`.
+  function hourly(hour: number, seconds = 3600): number[] {
+    const arr = Array.from({ length: 24 }, () => 0);
+    arr[hour] = seconds;
+    return arr;
+  }
+  // Hourly seconds covering an inclusive range [from, to].
+  function hourlyRange(from: number, to: number, secondsPerHour = 3600): number[] {
+    const arr = Array.from({ length: 24 }, () => 0);
+    for (let h = from; h <= to; h++) arr[h] = secondsPerHour;
+    return arr;
+  }
   const agent = (
     date: string,
     userId: string,
-    onlineSeconds = 3600,
-  ): AgentStatusRow => ({ date, userId, onlineSeconds });
+    hourlyArr: number[],
+  ): AgentStatusRow => ({
+    date,
+    userId,
+    onlineSeconds: hourlyArr.reduce((s, n) => s + n, 0),
+    hourlyOnlineSeconds: hourlyArr,
+  });
 
   it('leaves cell.staff undefined when no agentStatus rows are supplied', () => {
     const out = buildStaffingHeatmap(
@@ -193,8 +210,31 @@ describe('buildStaffingHeatmap — staff overlay', () => {
     expect(out.heatmap[0].staff).toBeUndefined();
   });
 
-  it('populates staff per cell as the avg distinct online users for that dow', () => {
-    // Tuesday 04-14: 2 staff online; Tuesday 04-21: 4 staff online -> avg 3.
+  it('counts staff per (dow, hour) only when the user was online that hour', () => {
+    // Tuesday 04-21:
+    //   u-a online 9-12  -> contributes to hours 9, 10, 11, 12
+    //   u-b online 13-15 -> contributes to hours 13, 14, 15
+    // Cell (dow=2, hour=9) sees 1 user, cell (2, 13) sees 1 user, etc.
+    const out = buildStaffingHeatmap(
+      input({
+        dailyStats: [dayWithHour('2026-04-21', 10, 1)],
+        agentStatus: [
+          agent('2026-04-21', 'u-a', hourlyRange(9, 12)),
+          agent('2026-04-21', 'u-b', hourlyRange(13, 15)),
+        ],
+      }),
+    );
+    const tuesday10 = out.heatmap.find((c) => c.dow === 2 && c.hour === 10);
+    expect(tuesday10?.staff).toBe(1); // only u-a online at 10am
+    const tuesday13 = out.heatmap.find((c) => c.dow === 2 && c.hour === 13);
+    expect(tuesday13?.staff).toBe(1); // only u-b online at 1pm
+    const tuesday3am = out.heatmap.find((c) => c.dow === 2 && c.hour === 3);
+    expect(tuesday3am?.staff).toBe(0); // nobody online at 3am
+  });
+
+  it('averages distinct users per cell across same-weekday dates in the window', () => {
+    // Two Tuesdays at hour 9: u-a online both, u-b online only once.
+    // -> sum = 2 + 1 = 3, dates = 2 -> avg = 1.5
     const out = buildStaffingHeatmap(
       input({
         dailyStats: [
@@ -202,45 +242,9 @@ describe('buildStaffingHeatmap — staff overlay', () => {
           dayWithHour('2026-04-21', 9, 1),
         ],
         agentStatus: [
-          agent('2026-04-14', 'u-a'),
-          agent('2026-04-14', 'u-b'),
-          agent('2026-04-21', 'u-a'),
-          agent('2026-04-21', 'u-b'),
-          agent('2026-04-21', 'u-c'),
-          agent('2026-04-21', 'u-d'),
-        ],
-      }),
-    );
-    const tuesday9 = out.heatmap.find((c) => c.dow === 2 && c.hour === 9);
-    expect(tuesday9?.staff).toBe(3);
-  });
-
-  it('skips agent rows with onlineSeconds=0 (not actually online)', () => {
-    const out = buildStaffingHeatmap(
-      input({
-        dailyStats: [dayWithHour('2026-04-21', 9, 1)],
-        agentStatus: [
-          agent('2026-04-21', 'u-a', 3600),
-          agent('2026-04-21', 'u-ghost', 0),
-        ],
-      }),
-    );
-    const tuesday9 = out.heatmap.find((c) => c.dow === 2 && c.hour === 9);
-    expect(tuesday9?.staff).toBe(1);
-  });
-
-  it('rounds staff averages to one decimal', () => {
-    // Two Tuesdays: 1 and 2 staff -> avg 1.5
-    const out = buildStaffingHeatmap(
-      input({
-        dailyStats: [
-          dayWithHour('2026-04-14', 9, 1),
-          dayWithHour('2026-04-21', 9, 1),
-        ],
-        agentStatus: [
-          agent('2026-04-14', 'u-a'),
-          agent('2026-04-21', 'u-a'),
-          agent('2026-04-21', 'u-b'),
+          agent('2026-04-14', 'u-a', hourly(9)),
+          agent('2026-04-21', 'u-a', hourly(9)),
+          agent('2026-04-21', 'u-b', hourly(9)),
         ],
       }),
     );
@@ -248,14 +252,28 @@ describe('buildStaffingHeatmap — staff overlay', () => {
     expect(tuesday9?.staff).toBe(1.5);
   });
 
+  it('skips agent rows with onlineSeconds=0', () => {
+    const out = buildStaffingHeatmap(
+      input({
+        dailyStats: [dayWithHour('2026-04-21', 9, 1)],
+        agentStatus: [
+          agent('2026-04-21', 'u-a', hourly(9)),
+          agent('2026-04-21', 'u-ghost', Array.from({ length: 24 }, () => 0)),
+        ],
+      }),
+    );
+    const tuesday9 = out.heatmap.find((c) => c.dow === 2 && c.hour === 9);
+    expect(tuesday9?.staff).toBe(1);
+  });
+
   it('drops agentStatus rows outside the window before averaging', () => {
     const out = buildStaffingHeatmap(
       input({
         dailyStats: [dayWithHour('2026-04-21', 9, 1)],
         agentStatus: [
-          agent('2026-04-21', 'u-a'),
-          agent('2026-01-01', 'u-old-a'),
-          agent('2026-01-01', 'u-old-b'),
+          agent('2026-04-21', 'u-a', hourly(9)),
+          agent('2026-01-01', 'u-old-a', hourly(9)),
+          agent('2026-01-01', 'u-old-b', hourly(9)),
         ],
       }),
     );
@@ -269,9 +287,9 @@ describe('buildStaffingHeatmap — staff overlay', () => {
         excludeWeekends: true,
         dailyStats: [dayWithHour('2026-04-21', 9, 1)],
         agentStatus: [
-          agent('2026-04-25', 'u-sat-a'), // Saturday — dropped
-          agent('2026-04-25', 'u-sat-b'),
-          agent('2026-04-21', 'u-tue'),
+          agent('2026-04-25', 'u-sat-a', hourly(9)), // Saturday — dropped
+          agent('2026-04-25', 'u-sat-b', hourly(9)),
+          agent('2026-04-21', 'u-tue', hourly(9)),
         ],
       }),
     );
@@ -280,19 +298,42 @@ describe('buildStaffingHeatmap — staff overlay', () => {
     expect(tuesday9?.staff).toBe(1);
   });
 
-  it('emits cells with staff even when there were zero tickets that hour', () => {
-    // Heatmap usually omits zero-ticket cells; staff overlay should still
-    // surface staffing on quiet hours so admins can spot over-staffing.
+  it('legacy fallback: rows missing hourlyOnlineSeconds broadcast across 24h', () => {
+    // Old rows without the array fall back to "user online all day" so the
+    // dashboard keeps rendering during migration windows.
+    const legacyRow: AgentStatusRow = {
+      date: '2026-04-21',
+      userId: 'u-legacy',
+      onlineSeconds: 3600,
+    };
+    const out = buildStaffingHeatmap(
+      input({
+        dailyStats: [dayWithHour('2026-04-21', 3, 1)], // 3am cell
+        agentStatus: [legacyRow],
+      }),
+    );
+    const cell = out.heatmap.find((c) => c.dow === 2 && c.hour === 3);
+    expect(cell?.staff).toBe(1);
+  });
+
+  it('emits zero-staff cells across all 24h for dows with agentStatus data', () => {
+    // Heatmap usually omits zero-ticket cells; staff overlay still surfaces
+    // every hour of the row so admins can spot uncovered slots.
     const out = buildStaffingHeatmap(
       input({
         dailyStats: [
           { date: '2026-04-21', hourly: Array.from({ length: 24 }, () => 0) },
         ],
-        agentStatus: [agent('2026-04-21', 'u-a'), agent('2026-04-21', 'u-b')],
+        agentStatus: [
+          agent('2026-04-21', 'u-a', hourlyRange(9, 17)),
+        ],
       }),
     );
     const tuesdayCells = out.heatmap.filter((c) => c.dow === 2);
     expect(tuesdayCells.length).toBe(24);
-    expect(tuesdayCells.every((c) => c.tickets === 0 && c.staff === 2)).toBe(true);
+    const businessHourCells = tuesdayCells.filter((c) => c.hour >= 9 && c.hour <= 17);
+    expect(businessHourCells.every((c) => c.staff === 1)).toBe(true);
+    const offHourCells = tuesdayCells.filter((c) => c.hour < 9 || c.hour > 17);
+    expect(offHourCells.every((c) => c.staff === 0)).toBe(true);
   });
 });

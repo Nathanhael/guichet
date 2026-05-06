@@ -133,6 +133,47 @@ describe('DrizzleTransitionLog adapter (real PG)', () => {
       expect(daily[0].awaySeconds).toBe(11 * 3600);   // 12:00 → 23:00
     });
 
+    it('buckets online seconds into the hour-of-day array (UTC)', async () => {
+      // Online from 09:00 to 11:30 UTC: hours 9 and 10 fully (3600s each),
+      // hour 11 partially (1800s). Hours outside this range stay at 0.
+      const start = new Date('2026-04-29T09:00:00Z');
+      const end = new Date('2026-04-29T11:30:00Z');
+      await log.openRow({ userId: USER, partnerId: PARTNER, status: 'online', startedAt: start });
+      await log.closeOpenRow({ userId: USER, partnerId: PARTNER, endedAt: end });
+
+      await log.rollupDay(PARTNER, '2026-04-29');
+      const daily = await log.agentDaily(USER, PARTNER, '2026-04-29', '2026-04-29');
+      expect(daily).toHaveLength(1);
+      const hourly = daily[0].hourlyOnlineSeconds;
+      expect(hourly).toHaveLength(24);
+      expect(hourly[9]).toBe(3600);
+      expect(hourly[10]).toBe(3600);
+      expect(hourly[11]).toBe(1800);
+      expect(hourly[8]).toBe(0);
+      expect(hourly[12]).toBe(0);
+      // Hourly array sums to onlineSeconds.
+      const sum = hourly.reduce((s, n) => s + n, 0);
+      expect(sum).toBe(daily[0].onlineSeconds);
+    });
+
+    it('away rows do NOT contribute to hourlyOnlineSeconds', async () => {
+      // 09:00–10:00 online, 10:00–11:00 away. Hour 9 online; hour 10 away
+      // (not counted in hourly online).
+      const t1 = new Date('2026-04-29T09:00:00Z');
+      const t2 = new Date('2026-04-29T10:00:00Z');
+      const t3 = new Date('2026-04-29T11:00:00Z');
+      await log.openRow({ userId: USER, partnerId: PARTNER, status: 'online', startedAt: t1 });
+      await log.closeAndOpen({ userId: USER, partnerId: PARTNER, nextStatus: 'away', at: t2 });
+      await log.closeOpenRow({ userId: USER, partnerId: PARTNER, endedAt: t3 });
+
+      await log.rollupDay(PARTNER, '2026-04-29');
+      const daily = await log.agentDaily(USER, PARTNER, '2026-04-29', '2026-04-29');
+      expect(daily[0].hourlyOnlineSeconds[9]).toBe(3600);
+      expect(daily[0].hourlyOnlineSeconds[10]).toBe(0);
+      expect(daily[0].onlineSeconds).toBe(3600);
+      expect(daily[0].awaySeconds).toBe(3600);
+    });
+
     it('is idempotent — running rollupDay twice produces the same result', async () => {
       const dayStart = new Date('2026-04-29T00:00:00Z');
       const dayEnd = new Date('2026-04-29T08:00:00Z');
@@ -174,13 +215,14 @@ describe('DrizzleTransitionLog adapter (real PG)', () => {
       await log.rollupDay(PARTNER, '2026-04-29');
 
       const daily = await log.agentDaily(USER, PARTNER, '2026-04-29', '2026-04-29');
-      expect(daily[0]).toEqual({
+      expect(daily[0]).toMatchObject({
         date: '2026-04-29',
         userId: USER,
         partnerId: PARTNER,
         onlineSeconds: 3600,
         awaySeconds: 0,
       });
+      expect(daily[0].hourlyOnlineSeconds).toHaveLength(24);
     });
 
     it('teamDaily returns rows for every agent in the partner', async () => {
