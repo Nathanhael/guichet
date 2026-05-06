@@ -419,7 +419,7 @@ export default function AdminArchive() {
                     <span className="text-[11px] text-[var(--color-ink-muted)] tabular-nums">
                       {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {msg.whisper && <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)]">{t('whisper_label')}</span>}
+                    {!!msg.whisper && <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)]">{t('whisper_label')}</span>}
                   </div>
                   <p className="text-[14px] leading-relaxed break-words text-[var(--color-ink)]">{msg.text}</p>
                   {msg.mediaUrl && (
