@@ -264,7 +264,7 @@ export function StaffingHeatmapZone({
             </span>
           </div>
         </header>
-        <div className="relative" style={{ paddingLeft: GUTTER_PX }}>
+        <div className="relative" style={{ paddingLeft: GUTTER_PX, paddingTop: 14 }}>
           <div
             data-testid="staffing-today-strip"
             className="flex items-end gap-[2px] h-16 relative"
@@ -282,6 +282,14 @@ export function StaffingHeatmapZone({
                   className={`flex-1 relative h-full ${isCurrentHour ? 'outline outline-1 outline-[var(--color-accent)] outline-offset-[-1px] rounded-sm' : ''}`}
                   title={`${formatHour(slot.hour)} — today ${fmt(slot.todayCount)}, typical ${fmt(slot.typicalCount)}`}
                 >
+                  {isCurrentHour && (
+                    <span
+                      aria-hidden
+                      className="absolute -top-[14px] left-1/2 -translate-x-1/2 text-[9px] font-medium uppercase tracking-widest text-[var(--color-accent)] leading-none whitespace-nowrap"
+                    >
+                      Now
+                    </span>
+                  )}
                   <div
                     className="absolute bottom-0 left-0 right-0 bg-[var(--color-ink-muted)] opacity-30 rounded-t-sm"
                     style={{ height: `${typicalH}%` }}
