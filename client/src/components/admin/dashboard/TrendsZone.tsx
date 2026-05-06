@@ -38,7 +38,16 @@ export interface TrendsZoneProps {
   loading?: boolean;
   error?: boolean;
   onRetry?: () => void;
+  /**
+   * Inclusive day count of the selected dashboard window. Used to distinguish
+   * "your window is too short for trends" (preset=today) from "your window
+   * is fine but tickets are sparse" (preset=7d on a quiet partner). The
+   * empty state copy adapts. Optional — defaults to "not enough data".
+   */
+  windowDays?: number;
 }
+
+const TRENDS_MIN_BUCKETS = 3;
 
 const GRANULARITY_KEY: Record<TrendGranularity, string> = {
   daily: 'granularity_daily',
@@ -62,7 +71,7 @@ const TICK = {
   fontFamily: 'Inter, system-ui, sans-serif',
 } as const;
 
-export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
+export function TrendsZone({ data, loading, error, onRetry, windowDays }: TrendsZoneProps) {
   const t = useT();
   if (loading) {
     return (
@@ -102,10 +111,15 @@ export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
     data.series.avgResponseMinutes.length,
   );
 
-  if (minPoints < 3) {
+  if (minPoints < TRENDS_MIN_BUCKETS) {
+    // Window-length empty state vs. data-sparsity empty state. With a 1-2 day
+    // window the daily-bucketing logic can't ever produce TRENDS_MIN_BUCKETS
+    // buckets, so the "not enough data" copy is misleading — point the admin
+    // at the date filter instead.
+    const windowTooShort = windowDays !== undefined && windowDays < TRENDS_MIN_BUCKETS;
     return (
       <div className="text-[13px] text-[var(--color-ink-muted)]">
-        {t('trends_not_enough_data')}
+        {windowTooShort ? t('trends_window_too_short') : t('trends_not_enough_data')}
       </div>
     );
   }

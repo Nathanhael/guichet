@@ -865,6 +865,7 @@ const fr: Record<string, string> = {
     granularity_monthly: 'Mensuel',
     error_trends_load: 'Impossible de charger les données de tendances.',
     trends_not_enough_data: 'Données insuffisantes — le premier graphique apparaît à partir de 3 points de données.',
+    trends_window_too_short: 'Choisissez une fenêtre de 7 jours ou plus pour voir les tendances — Aujourd\'hui est trop court.',
     trends_chart_volume: 'Volume',
     trends_chart_csat: 'CSAT',
     trends_chart_response: 'Réponse moy. (min)',

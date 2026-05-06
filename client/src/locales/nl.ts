@@ -865,6 +865,7 @@ const nl: Record<string, string> = {
     granularity_monthly: 'Maandelijks',
     error_trends_load: 'Trendgegevens konden niet worden geladen.',
     trends_not_enough_data: 'Onvoldoende gegevens — eerste grafiek verschijnt bij 3+ datapunten.',
+    trends_window_too_short: 'Kies 7 dagen of meer om trends te zien — vandaag is te kort.',
     trends_chart_volume: 'Volume',
     trends_chart_csat: 'CSAT',
     trends_chart_response: 'Gem. reactie (min)',
