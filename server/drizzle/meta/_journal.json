@@ -120,6 +120,13 @@
       "when": 1778090336257,
       "tag": "0016_add_hourly_online_seconds",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778092079759,
+      "tag": "0017_add_partner_dashboard_config",
+      "breakpoints": true
     }
   ]
 }
