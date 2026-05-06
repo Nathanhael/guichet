@@ -46,13 +46,14 @@ export function DashboardView({
 
   const manifestQuery = trpc.partner.getManifest.useQuery(undefined, {
     staleTime: 60_000,
-    enabled: departmentsProp === undefined,
   });
   const departments = useMemo(() => {
     if (departmentsProp) return departmentsProp;
     const raw = (manifestQuery.data?.departments as Array<{ id: string; name?: string }> | null) ?? [];
     return raw.filter((d) => d?.id).map((d) => ({ id: d.id, name: d.name ?? d.id }));
   }, [departmentsProp, manifestQuery.data]);
+  const thinCoverageRatio =
+    (manifestQuery.data?.dashboardConfig as { ticketsPerStaffPerHour?: number } | null)?.ticketsPerStaffPerHour;
 
   const queryInput = {
     dateFrom: range.dateFrom,
@@ -178,6 +179,7 @@ export function DashboardView({
           error={staffingHeatmapQuery.isError}
           onRetry={() => staffingHeatmapQuery.refetch()}
           excludeWeekends={filters.excludeWeekends}
+          thinCoverageRatio={thinCoverageRatio}
         />
       </DashboardZone>
       <DashboardZone testId="dashboard-zone-trends" title={t('zone_trends')}>

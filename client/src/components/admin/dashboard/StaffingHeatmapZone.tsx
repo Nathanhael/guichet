@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { trpc } from '../../../utils/trpc';
 
 /**
  * Dashboard Z3 — Staffing fit.
@@ -41,7 +42,15 @@ export interface StaffingHeatmapZoneProps {
   error?: boolean;
   onRetry?: () => void;
   excludeWeekends?: boolean;
+  /**
+   * Tickets-per-staff-per-hour above which a cell is flagged understaffed.
+   * Sourced from `partner.dashboardConfig.ticketsPerStaffPerHour`. Falls back
+   * to {@link DEFAULT_THIN_COVERAGE_RATIO} when not configured.
+   */
+  thinCoverageRatio?: number;
 }
+
+export const DEFAULT_THIN_COVERAGE_RATIO = 5;
 
 const DOW_LABELS_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOW_LABELS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -51,10 +60,6 @@ const WEEK_ORDER_NO_WEEKENDS = [1, 2, 3, 4, 5];
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 // Label gutter: w-10 (40px) + gap-[2px] (2px) = 42px to align strip + axis with cells.
 const GUTTER_PX = 42;
-// Tickets-per-staff ratio above which a cell is flagged as understaffed.
-// Anchored to "1 agent juggling more than 2 incoming tickets per hour"
-// — empirically thin coverage even allowing for parallel chats.
-const THIN_COVERAGE_RATIO = 2;
 // Below this hourly arrival rate, ratios are noisy (rounding artefacts on
 // rare slots) so we don't flag understaffing.
 const MIN_TICKETS_FOR_FIT_FLAG = 0.5;
@@ -89,6 +94,7 @@ interface CellInsight {
 function deriveInsights(
   cells: StaffingHeatmapData['heatmap'],
   visibleDows: number[],
+  thinRatio: number,
 ): { busiest?: CellInsight; thinnest?: CellInsight; thinCount: number } {
   const dowSet = new Set(visibleDows);
   const inWindow = cells.filter((c) => dowSet.has(c.dow));
@@ -107,7 +113,7 @@ function deriveInsights(
       c.tickets >= MIN_TICKETS_FOR_FIT_FLAG
     ) {
       const ratio = c.tickets / c.staff;
-      if (ratio > THIN_COVERAGE_RATIO) thinCount += 1;
+      if (ratio > thinRatio) thinCount += 1;
       if (!thinnest || ratio > (thinnest.ratio ?? 0)) {
         thinnest = { dow: c.dow, hour: c.hour, tickets: c.tickets, staff: c.staff, ratio };
       }
@@ -122,8 +128,10 @@ export function StaffingHeatmapZone({
   error,
   onRetry,
   excludeWeekends,
+  thinCoverageRatio,
 }: StaffingHeatmapZoneProps) {
   const [showStaffNumbers, setShowStaffNumbers] = useState(true);
+  const thinRatio = thinCoverageRatio ?? DEFAULT_THIN_COVERAGE_RATIO;
 
   if (loading) {
     return (
@@ -171,7 +179,7 @@ export function StaffingHeatmapZone({
 
   const maxTickets = data.heatmap.reduce((m, c) => Math.max(m, c.tickets), 0);
   const visibleDows = excludeWeekends ? WEEK_ORDER_NO_WEEKENDS : WEEK_ORDER_FULL;
-  const insights = deriveInsights(data.heatmap, visibleDows);
+  const insights = deriveInsights(data.heatmap, visibleDows, thinRatio);
 
   const stripMax = data.todayVsTypical.reduce(
     (m, s) => Math.max(m, s.todayCount, s.typicalCount),
@@ -189,9 +197,10 @@ export function StaffingHeatmapZone({
       <div className="flex items-start justify-between gap-3">
         <p className="text-[12px] text-[var(--color-ink-muted)] leading-snug max-w-prose">
           Average ticket arrivals by weekday and hour over the last {data.daysCollected} days.
-          Darker cells = busier slots. <span className="text-[var(--color-danger,#ef4444)]">Red outline</span> = thin coverage (more than {THIN_COVERAGE_RATIO} tickets per staff/hour).
+          Darker cells = busier slots. <span className="text-[var(--color-danger,#ef4444)]">Red outline</span> = thin coverage (more than {thinRatio} tickets per staff/hour).
           <span className="block mt-0.5 text-[10.5px] opacity-80">Times in {tz}.</span>
         </p>
+        <ThinRatioEditor current={thinRatio} />
         {hasStaffData && (
           <button
             type="button"
@@ -220,7 +229,7 @@ export function StaffingHeatmapZone({
               }`}
             />
           )}
-          {insights.thinnest && insights.thinnest.ratio !== undefined && insights.thinnest.ratio > THIN_COVERAGE_RATIO && (
+          {insights.thinnest && insights.thinnest.ratio !== undefined && insights.thinnest.ratio > thinRatio && (
             <InsightChip
               tone="warn"
               label="Thinnest coverage"
@@ -327,7 +336,7 @@ export function StaffingHeatmapZone({
                     staff !== undefined && staff > 0 && tickets >= MIN_TICKETS_FOR_FIT_FLAG
                       ? tickets / staff
                       : null;
-                  const isThin = ratio !== null && ratio > THIN_COVERAGE_RATIO;
+                  const isThin = ratio !== null && ratio > thinRatio;
                   const showBadge = showStaffNumbers && staff !== undefined;
                   const ringClass = isThin
                     ? 'ring-1 ring-[var(--color-danger,#ef4444)] ring-inset'
@@ -379,6 +388,93 @@ export function StaffingHeatmapZone({
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+interface ThinRatioEditorProps {
+  current: number;
+}
+
+/**
+ * Inline admin-only editor for `partner.dashboardConfig.ticketsPerStaffPerHour`.
+ * Lives inside the staffing-fit zone header so the knob sits next to the
+ * signal it tunes — no separate settings page for one number.
+ */
+function ThinRatioEditor({ current }: ThinRatioEditorProps) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState<string>(current.toString());
+  const utils = trpc.useUtils();
+  const mutation = trpc.partner.updateDashboardConfig.useMutation({
+    onSuccess: () => {
+      utils.partner.getManifest.invalidate();
+      setOpen(false);
+    },
+  });
+
+  function handleSave() {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    if (parsed < 0.5 || parsed > 50) return;
+    if (Math.abs(parsed - current) < 0.01) {
+      setOpen(false);
+      return;
+    }
+    mutation.mutate({ ticketsPerStaffPerHour: parsed });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setValue(current.toString());
+          setOpen(true);
+        }}
+        title="Adjust the tickets-per-staff threshold for the understaffed flag"
+        className="shrink-0 h-7 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] text-[var(--color-ink-muted)]"
+      >
+        Threshold: {current}/h
+      </button>
+    );
+  }
+
+  return (
+    <div className="shrink-0 flex items-center gap-1.5 text-[11px]">
+      <label htmlFor="thin-ratio-input" className="text-[var(--color-ink-muted)]">
+        Thin above
+      </label>
+      <input
+        id="thin-ratio-input"
+        type="number"
+        min={0.5}
+        max={50}
+        step={0.5}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleSave();
+          if (e.key === 'Escape') setOpen(false);
+        }}
+        autoFocus
+        className="w-16 h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-accent)]"
+      />
+      <span className="text-[var(--color-ink-muted)]">/h</span>
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={mutation.isPending}
+        className="h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-white text-[11px] disabled:opacity-50"
+      >
+        Save
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="h-7 px-2 rounded-[var(--radius-btn)] text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+      >
+        Cancel
+      </button>
     </div>
   );
 }
