@@ -3,7 +3,6 @@ import { useDashboardFilters } from '../../../hooks/useDashboardFilters';
 import { trpc } from '../../../utils/trpc';
 import { resolveDateRange } from '../../../utils/dashboardDateRange';
 import { FilterBar } from './FilterBar';
-import { ActionList, type ActionListData } from './ActionList';
 import { Scorecard, type ScorecardData } from './Scorecard';
 import { DeptBreakdownTable, type DeptRow } from './DeptBreakdownTable';
 import { StaffBreakdownTable, type StaffRow } from './StaffBreakdownTable';
@@ -22,8 +21,8 @@ import { useT } from '../../../i18n';
 /**
  * AdminView default `dashboard` tab.
  *
- * Hosts the URL-persisted filter hook and renders the 5 zones:
- *   Z1 Action list  · Z2 Scorecard · Z3 Staffing fit
+ * Hosts the URL-persisted filter hook and renders the 4 zones:
+ *   Z2 Scorecard · Z3 Staffing fit
  *   Z4 Trend charts · Z5 Breakdown tables (staff + dept)
  *
  * Brand-new partners (zero closed tickets, zero non-admin staff) see the
@@ -52,7 +51,6 @@ export function DashboardView({
     excludeWeekends: filters.excludeWeekends,
   };
 
-  const actionListQuery = trpc.dashboard.getActionList.useQuery(queryInput);
   const scorecardQuery = trpc.dashboard.getScorecard.useQuery(queryInput);
   const deptBreakdownQuery = trpc.dashboard.getDeptBreakdown.useQuery(queryInput);
   const staffBreakdownQuery = trpc.dashboard.getStaffBreakdown.useQuery(queryInput);
@@ -68,7 +66,6 @@ export function DashboardView({
   if (filters.dateFrom) rootAttrs['data-from'] = filters.dateFrom;
   if (filters.dateTo) rootAttrs['data-to'] = filters.dateTo;
 
-  const actionListData = (actionListQuery.data ?? null) as ActionListData | null;
   const scorecardData = (scorecardQuery.data ?? null) as ScorecardData | null;
   const deptBreakdownData = (deptBreakdownQuery.data ?? null) as DeptRow[] | null;
   const staffBreakdownData = (staffBreakdownQuery.data ?? null) as StaffRow[] | null;
@@ -78,7 +75,6 @@ export function DashboardView({
   const showOnboarding = onboardingData?.isNewPartner === true;
 
   const refreshAll = () => {
-    actionListQuery.refetch();
     scorecardQuery.refetch();
     deptBreakdownQuery.refetch();
     staffBreakdownQuery.refetch();
@@ -157,14 +153,6 @@ export function DashboardView({
         />
       </header>
 
-      <DashboardZone testId="dashboard-zone-actions" title={t('zone_action_list')}>
-        <ActionList
-          data={actionListData}
-          loading={actionListQuery.isLoading}
-          error={actionListQuery.isError}
-          onRetry={() => actionListQuery.refetch()}
-        />
-      </DashboardZone>
       <DashboardZone testId="dashboard-zone-scorecard" title={t('zone_scorecard')}>
         <Scorecard
           data={scorecardData}

@@ -873,9 +873,8 @@ const en: Record<string, string> = {
     col_last_activity: 'Last activity',
     cross_partner_filter_btn: 'Filter →',
 
-    // Dashboard 5-zone subcomponents (DashboardView / FilterBar / ActionList / TrendsZone)
+    // Dashboard zone subcomponents (DashboardView / FilterBar / TrendsZone)
     dashboard_filters_aria: 'Dashboard filters',
-    zone_action_list: 'Action list',
     zone_scorecard: 'Scorecard',
     zone_staffing_fit: 'Staffing fit',
     zone_trends: 'Trends',
@@ -887,13 +886,7 @@ const en: Record<string, string> = {
     filter_all_departments_full: 'All departments',
     filter_export_csv: 'Export CSV',
     filter_export_pdf: 'Export PDF',
-    error_action_list_load: 'Could not load action list.',
     retry: 'Retry',
-    all_clear_today: 'All clear today',
-    action_sla_breaches: 'SLA breaches',
-    action_abandoned: 'Abandoned',
-    action_untreated_feedback: 'Untreated feedback',
-    action_pending_invites: 'Pending invites',
     granularity_daily: 'Daily',
     granularity_weekly: 'Weekly',
     granularity_monthly: 'Monthly',

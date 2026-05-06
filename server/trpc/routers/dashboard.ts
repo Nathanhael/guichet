@@ -4,16 +4,6 @@ import { router, partnerScopedProcedure } from '../trpc.js';
 import { isPlatformAdmin } from '../../services/roles.js';
 import { UserRole } from '../../types/index.js';
 import {
-  buildActionList,
-  type ActionList,
-} from '../../services/dashboard/actionList.js';
-import {
-  fetchSlaBreaches,
-  fetchAbandonedTickets,
-  fetchUntreatedFeedback,
-  fetchPendingInvites,
-} from '../../services/dashboard/actionListQueries.js';
-import {
   buildScorecard,
   type Scorecard,
 } from '../../services/dashboard/scorecard.js';
@@ -92,29 +82,6 @@ function resolveWindow(input: { dateFrom?: string; dateTo?: string }): { from: D
 }
 
 export const dashboardRouter = router({
-  getActionList: dashboardProcedure
-    .input(dashboardFiltersSchema)
-    .query(async ({ input, ctx }): Promise<ActionList> => {
-      const partnerId = ctx.user.partnerId;
-      const { from, to } = resolveWindow(input);
-
-      const [breaches, abandoned, feedback, invites] = await Promise.all([
-        fetchSlaBreaches(partnerId, from, to),
-        fetchAbandonedTickets(partnerId, from, to),
-        fetchUntreatedFeedback(partnerId, from, to),
-        fetchPendingInvites(partnerId),
-      ]);
-
-      return buildActionList({
-        partnerId,
-        window: { from, to },
-        breaches,
-        abandoned,
-        feedback,
-        invites,
-      });
-    }),
-
   getScorecard: dashboardProcedure
     .input(dashboardFiltersSchema)
     .query(async ({ input, ctx }): Promise<Scorecard> => {
