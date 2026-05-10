@@ -661,6 +661,68 @@ async function insertMessages(
   }
 }
 
+// Per-partner label catalog. Some labels are dept-scoped (Billing→FOT,
+// Bug/Outage→TEC, Documentation→DSC) so the rendered chip distribution looks
+// plausible per queue. Color keys come from client/src/utils/labelColors.ts.
+const LABEL_CATALOG: Array<{ name: string; color: string; depts?: string[] }> = [
+  { name: 'VIP', color: 'rose' },
+  { name: 'Billing', color: 'amber', depts: ['FOT'] },
+  { name: 'Bug', color: 'orange', depts: ['TEC'] },
+  { name: 'Feature Request', color: 'sky' },
+  { name: 'Escalated', color: 'purple' },
+  { name: 'Outage', color: 'rose', depts: ['TEC'] },
+  { name: 'Followup', color: 'teal' },
+  { name: 'Documentation', color: 'slate', depts: ['DSC'] },
+];
+
+function slugifyLabel(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '_');
+}
+
+async function insertLabels(): Promise<Map<string, string>> {
+  const rows = LABEL_CATALOG.map((l) => ({
+    id: `seed_dash_lbl_${slugifyLabel(l.name)}`,
+    partnerId: PARTNER_ID,
+    name: l.name,
+    color: l.color,
+  }));
+  await db.insert(schema.labels).values(rows).onConflictDoNothing();
+  return new Map(rows.map((r) => [r.name, r.id]));
+}
+
+async function insertTicketLabels(
+  tickets: GeneratedTicket[],
+  labelIds: Map<string, string>,
+): Promise<void> {
+  const generalLabels = LABEL_CATALOG.filter((l) => !l.depts);
+  const rows: Array<typeof schema.ticketLabels.$inferInsert> = [];
+  for (const t of tickets) {
+    // 50% no label · 35% one label · 15% two labels
+    const r = rand();
+    const count = r < 0.5 ? 0 : r < 0.85 ? 1 : 2;
+    if (count === 0) continue;
+
+    // Pool = dept-scoped catalog entries that include this dept, plus general
+    // (unscoped) catalog entries. Always has at least the general set.
+    const pool = LABEL_CATALOG.filter((l) => !l.depts || l.depts.includes(t.dept));
+    const effective = pool.length > 0 ? pool : generalLabels;
+    const chosen = new Set<string>();
+    let attempts = 0;
+    while (chosen.size < count && chosen.size < effective.length && attempts < 20) {
+      chosen.add(pick(effective).name);
+      attempts++;
+    }
+    for (const name of chosen) {
+      const labelId = labelIds.get(name);
+      if (labelId) rows.push({ ticketId: t.id, labelId });
+    }
+  }
+  const CHUNK = 200;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await db.insert(schema.ticketLabels).values(rows.slice(i, i + CHUNK)).onConflictDoNothing();
+  }
+}
+
 async function insertAppFeedback(users: RoleUsers, days: Date[]): Promise<void> {
   const allUsers = [...users.agents, ...users.supports];
   const rows: Array<typeof schema.appFeedback.$inferInsert> = [];
@@ -743,6 +805,13 @@ async function main() {
 
   console.log('💬 Inserting app_feedback entries...');
   await insertAppFeedback(users, days);
+
+  console.log('🏷️  Upserting label catalog...');
+  const labelIds = await insertLabels();
+  console.log(`   labels=${labelIds.size}`);
+
+  console.log('🏷️  Attaching labels to tickets...');
+  await insertTicketLabels(allTickets, labelIds);
 
   console.log('💬 Inserting per-ticket message threads...');
   await insertMessages(allTickets, users);
