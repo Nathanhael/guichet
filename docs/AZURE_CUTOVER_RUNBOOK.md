@@ -50,12 +50,78 @@ Two paths — pick one **before** you build images:
 1. **Squash to single 0000 (recommended for fresh prod DB)** — collapse all
    incremental Drizzle migrations into one `0000_initial.sql`. Avoids the
    ledger-conflict risk you hit during dev when migrations get re-baselined.
-   Generate a fresh squash with `drizzle-kit generate` against an empty
-   schema reference, replace `server/drizzle/` contents with the single
-   file + journal, and rebuild the prod image.
+   The procedure has been verified — see "Squash procedure" below for the
+   exact commands and the equivalence check that's been done.
 2. **Apply incrementally against an existing DB** — keep `server/drizzle/`
    as-is and run `node dist/db/migrate.js` once after deploy. Only safe if
    the prod DB already has a Drizzle journal (i.e. it was previously baselined).
+
+#### Squash procedure (verified 2026-05-10)
+
+The `server/drizzle-prod-squash.config.ts` file is committed to the repo
+specifically for this; it points `drizzle-kit` at a separate output
+directory (`server/drizzle-prod-squash/`, gitignored) so the dev journal
+in `server/drizzle/` stays untouched.
+
+```bash
+# 1. Generate the squash from the live schema.ts
+docker compose exec server npx drizzle-kit generate \
+  --config drizzle-prod-squash.config.ts --name initial
+# → server/drizzle-prod-squash/0000_initial.sql + meta/
+
+# 2. (Optional but recommended) verify equivalence with the incremental ledger
+docker compose exec db psql -U user -d postgres \
+  -c "DROP DATABASE IF EXISTS squash_a;" \
+  -c "DROP DATABASE IF EXISTS squash_b;" \
+  -c "CREATE DATABASE squash_a;" \
+  -c "CREATE DATABASE squash_b;"
+
+# Apply the 18 incremental migrations to squash_a
+docker compose exec -e DATABASE_URL=postgres://user:password@db:5432/squash_a \
+  server npx drizzle-kit migrate
+
+# Apply the single squash to squash_b
+docker compose exec -e DATABASE_URL=postgres://user:password@db:5432/squash_b \
+  server npx drizzle-kit migrate --config drizzle-prod-squash.config.ts
+
+# Diff the resulting schemas
+docker compose exec db pg_dump -U user --schema-only --schema=public squash_a > .schema-a.sql
+docker compose exec db pg_dump -U user --schema-only --schema=public squash_b > .schema-b.sql
+diff -u .schema-a.sql .schema-b.sql
+```
+
+Expected diff (last verified 2026-05-10): **only column ordering** in 7
+tables that grew columns over the incremental history (`ai_usage_log`,
+`archived_tickets`, `canned_responses`, `daily_agent_status`, `messages`,
+`partners`, `tickets`). No structural differences — same columns, same
+types, same constraints, same indexes. Drizzle queries always use named
+columns so the ordering difference is functionally invisible.
+
+#### Cutover-time replacement
+
+When you're ready to ship the squash:
+
+```bash
+# Move dev incrementals out of the way
+mv server/drizzle server/drizzle.dev-incrementals.bak
+
+# Promote the squash to be the canonical migration folder
+mv server/drizzle-prod-squash server/drizzle
+
+# Build the prod image — Dockerfile.prod COPYs server/drizzle into runtime
+docker build -f server/Dockerfile.prod -t <acr>.azurecr.io/guichet-server:<tag> server/
+```
+
+After the prod cutover succeeds, decide whether to re-baseline dev (apply
+the same squash to dev DB and reset its ledger) or keep dev on the
+incremental history. The prod image only ever sees the squash; dev's
+choice is independent.
+
+Take a database backup before either path:
+```bash
+docker compose exec server npm run db:backup        # local stack
+# Azure: pg_dump from a jump host or `az postgres flexible-server backup`
+```
 
 Either way, take a backup first:
 ```bash
