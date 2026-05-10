@@ -49,6 +49,7 @@ Thumbs.db
 
 # Session scratch (Claude / Codex / other tooling debris)
 .tmp_*
+.ci-*
 
 # IDEs
 .vscode/
