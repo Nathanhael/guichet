@@ -38,7 +38,7 @@ Production default:
 
 Auth method per partner:
 
-- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0008_drop_auth_method.sql`. The per-user `users.auth_method` override followed in `0009_drop_users_auth_method.sql`. The full local-auth column set (`password`, `mfa_*`, `platform_totp_*`, `reset_password_*`, `failed_login_attempts`, `locked_until`, `password_history`, `password_changed_at`) was dropped in `0013_drop_local_auth.sql`.
+- All partners are SSO-only. The current schema has never carried password / MFA / lockout / step-up / `auth_method` columns — Guichet shipped clean as SSO-only, no historical local-auth subsystem to migrate away from.
 
 Non-SSO login paths:
 
@@ -84,12 +84,17 @@ Tenant access is granted by `memberships`.
 
 ## Assignment Rules
 
-Membership assignment is fully Azure-driven. Guichet has no UI or tRPC mutation
-to invite users, change roles, or revoke memberships — the `partner.{inviteExternalUser, updateMember, removeMember}`
-and `platform.{inviteUser, updateMembership, removeMembership, deleteUser, revokePendingInvite}`
-mutations were removed. To grant, change, or revoke access, a platform admin
-updates Azure security group assignments in Entra; the SSO callback then
-provisions or syncs memberships on next login.
+Membership assignment is fully Azure-driven. Guichet has no UI flow to invite
+users, change roles, or revoke memberships — the partner-side
+`inviteExternalUser` / `updateMember` / `removeMember` mutations and the
+platform-side `inviteUser` / `updateMembership` / `removeMembership` /
+`revokePendingInvite` mutations were removed. The only surviving partner-side
+member knob is `partner.updateMemberDepartments` (admin-only, narrow scope —
+flips department visibility for an existing member). `platform.deleteUser`
+survives only as a non-prod test fixture (`testFixtures.deleteUser`). To
+grant, change, or revoke access generally, a platform admin updates Azure
+security group assignments in Entra; the SSO callback then provisions or
+syncs memberships on next login.
 
 - `platform_operator` can create tenants (`platform.createPartner`)
 - tenant creation is the only identity-related mutation that survives in Guichet's UI
@@ -162,6 +167,9 @@ Current intended behavior:
    - `partnerId`
    - `membershipId`
    - `isPlatformOperator`
+   - `isExternal` (B2B-guest flag)
+   - `departments` (department-scope array from the active membership)
+   - `jti` (per-token id used by the Redis revocation gate)
 
 ### Dev-login (non-prod only)
 
@@ -173,7 +181,7 @@ Current intended behavior:
 
 1. Operator runs `docker compose exec server npx tsx server/scripts/break_glass.ts <email> [ttlMinutes]`.
 2. CLI enforces `isPlatformOperator`, mints a JWT with TTL clamped to 1–60 minutes.
-3. Writes an `auth.break_glass` audit row with `{ actorId, ttlMinutes, exp }`.
+3. Writes an `auth.break_glass` audit row. The `actor_id` column on the row identifies the operator; `metadata` carries `{ jti, ttlMinutes, email }`.
 
 ### SSO auth — Azure B2B guest federation
 
@@ -185,15 +193,15 @@ the Guichet user as external.
 
 - `users.is_external` is set at every SSO login from `claims.acct === 1 || !!claims.idp`. The flag is refreshed on each login so a member→guest or guest→member change in Azure auto-syncs.
 - **Strict single-partner rule**: a guest whose Azure groups resolve to more than one partner is rejected with `sso_error=guest_multi_partner_mapping`. An audit entry (`sso.guest_multi_partner_rejected`) is written with `partnerIds` + `groupCount` — never the full group array. Internal staff keep the existing multi-partner behavior and can use `PartnerSwitcher`.
-- **Admin guest gates** — capability check resolved inline at each callsite via `trpcActor(ctx, { capability: 'destructive_admin' })` (no shared procedure wrapper; the rule lives once in `server/services/auth/capabilities.ts`). Operators bypass.
-  - **Destructive mutations** that throw FORBIDDEN when `ctx.user.isExternal === true`: webhook CRUD + secret rotation + test (`webhook.{create, update, delete, regenerateSecret, test}`), partner department edits (`partner.config.{updateDepartments, updateDepartmentSla}`).
-  - **Internal-only admin reads** that share the same gate (a guest partner-admin must not see other-tenant or platform-internal identities): `partner.members.listAdmins` (admin roster), `partner.audit.{getAuditLog, getForTicket}` (actor `users.name` join leaks platform-operator identities).
+- **Admin guest gates** — capability checks resolved inline at each callsite via `trpcActor(ctx, { capability })` (no shared procedure wrapper; the rules live once in `server/services/auth/capabilities.ts`). Operators bypass both rules.
+  - **Destructive mutations** (`destructive_admin` capability) throw FORBIDDEN when `ctx.user.isExternal === true`: webhook CRUD + secret rotation + test (`webhook.{create, update, delete, regenerateSecret, test}`), partner department + SLA edits (`partner.{updateDepartments, updateDepartmentSla}`), label CRUD (`label.{create, update, delete}`), canned-response CRUD (`cannedResponse.{create, update, delete, regenerate, backfillUntranslated}`).
+  - **Internal-only admin reads** (`audit_read` capability — same effective rule today, separately named for future divergence): `partner.listAdmins` (admin roster), `partner.audit.{getAuditLog, getForTicket}` (actor `users.name` join would leak platform-operator identities).
   - Plain `adminProcedure` covers the default case: admin reads safe for guests.
-- **UI signal**: a brutalist `GUEST` badge renders next to guest names in `UserMenu`, `AdminTeam`, and the SupportView team panel. Driven by `users.isExternal` exposed via `trpc.user.me` and batch-looked-up in `trpc.status.getTeamStatus`.
+- **UI signal**: a `GuestBadge` renders next to guest names in `UserMenuChip`, `AdminTeam`, and the SupportView `SidebarFooter` team panel. Driven by `users.isExternal` exposed via `trpc.user.me` and batch-looked-up in `trpc.status.getTeamStatus`.
 - Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The capability rule short-circuits for operators regardless of the JWT claim.
-- The capability check reads `isExternal` from the JWT claim on `ctx.user` (slice #66 stamps it at every mint site). Pre-flip tokens cannot evade the gate because slice #67 makes every flag flip atomically revoke the user's sessions + refresh-token families before the next request can land.
+- The capability check reads `isExternal` from the JWT claim on `ctx.user`. Pre-flip tokens cannot evade the gate because every flag flip atomically revokes the user's sessions + refresh-token families before the next request can land — see `services/auth/isExternalFlip.ts`.
 
-SSO callback wiring lives in `server/routes/sso.ts`; capability rules in `server/services/auth/capabilities.ts`; JWT-flip cascade in `server/services/auth/flipIsExternal.ts` (within the `services/auth/` barrel).
+SSO callback wiring lives in `server/routes/sso.ts`; capability rules in `server/services/auth/capabilities.ts`; JWT-flip cascade in `server/services/auth/isExternalFlip.ts` (re-exported from the `services/auth/` barrel).
 
 ## Current Implementation Rules
 

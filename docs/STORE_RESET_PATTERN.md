@@ -1,8 +1,10 @@
-# Zustand Store Reset Pattern: Design Brief
+# Zustand Store Reset Pattern
 
-## Problem
+> **Status: shipped.** This document records the implemented pattern, not a proposal. Each slice exposes a private `_resetX` method; `clearAllPartnerState()` in `authSlice.ts` orchestrates them on logout. The historical "Migration Path" / "Code Checklist" sections at the bottom are kept for archeology but are all complete.
 
-**Current state**: `authSlice.clearAuthState()` directly mutates all 5 other slices. This is brittle and untestable.
+## Background — what this replaced
+
+The previous shape: `authSlice.clearAuthState()` directly mutated all 5 other slices. Brittle and untestable.
 
 ```typescript
 // authSlice.ts (lines 17-62)
@@ -69,13 +71,12 @@ export interface TicketSlice {
   participantsOnline: Record<string, boolean>;
   supportOpenTickets: string[];
   queuePosition: { position: number; etaMins: number } | null;
-  topicAlerts: TopicAlert[];
-  
+
   // ... existing setters
   setTickets: (tickets: Ticket[]) => void;
   // ...
-  
-  // NEW: Reset contract (internal, only called by store)
+
+  // Reset contract (internal, only called by store)
   _resetTicketState?: () => void;
 }
 
@@ -87,11 +88,10 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   participantsOnline: {},
   supportOpenTickets: [],
   queuePosition: null,
-  topicAlerts: [],
-  
+
   // ... existing setters
-  
-  // NEW: Resetter function (idempotent, pure)
+
+  // Resetter function (idempotent, pure)
   _resetTicketState: () =>
     set({
       tickets: [],
@@ -101,7 +101,6 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
       participantsOnline: {},
       supportOpenTickets: [],
       queuePosition: null,
-      topicAlerts: [],
     }),
 });
 ```
@@ -140,19 +139,15 @@ function clearAllPartnerState(get: () => StoreState, set: (partial: Partial<Stor
   state._resetTicketState?.();
   state._resetMessageState?.();
   state._resetConfigState?.();
+  state._resetUIState?.();   // narrow reset — agentStatus, lightbox*, prefsModifiedLocally, connectionStatus. Device prefs preserved.
   state._resetRatingState?.();
-  // ui state intentionally NOT reset; device prefs preserved
-  
-  // Finally reset auth state
+
+  // Finally reset auth identity
   set({
     user: null,
     memberships: [],
     activeMembershipId: null,
     activePartnerId: null,
-    agentStatus: 'online',
-    lightboxImages: [],
-    lightboxIndex: null,
-    connectionStatus: 'disconnected',
   });
 }
 
@@ -266,9 +261,9 @@ export function LoginView() {
    - _resetTicketState()
    - _resetMessageState()
    - _resetConfigState()
+   - _resetUIState()   ← narrow reset; device prefs preserved
    - _resetRatingState()
-   - (ui NOT reset; device prefs preserved)
-5. Finally resets auth state
+5. Finally resets auth identity (user / memberships / activeMembershipId / activePartnerId)
 6. Socket already torn down
 7. Browser navigates to /login
 8. New user logs in with clean state
@@ -324,16 +319,17 @@ describe('logout orchestration', () => {
       _resetTicketState: () => calls.push('ticket'),
       _resetMessageState: () => calls.push('message'),
       _resetConfigState: () => calls.push('config'),
+      _resetUIState: () => calls.push('ui'),
       _resetRatingState: () => calls.push('rating'),
       // ... other fields
     };
-    
+
     const get = () => state;
     const set = vitest.fn();
-    
+
     clearAllPartnerState(get, set);
-    
-    expect(calls).toEqual(['ticket', 'message', 'config', 'rating']);
+
+    expect(calls).toEqual(['ticket', 'message', 'config', 'ui', 'rating']);
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         user: null,
@@ -355,7 +351,7 @@ This abstraction **hides**:
 2. **Reset order**: ticketSlice resets first, then messageSlice, etc. (intentional but hidden).
 3. **sessionStorage cleanup**: Only auth knows about it; other slices only know Zustand.
 4. **Socket teardown**: Orthogonal to state reset; hidden in logout().
-5. **Device preference preservation**: UI slice intentionally NOT in reset loop (hidden decision).
+5. **Device preference preservation**: `uiSlice._resetUIState` only resets transient session state (`agentStatus`, `lightboxImages`, `lightboxIndex`, `prefsModifiedLocally`, `connectionStatus`) and explicitly preserves device prefs (theme, font size, accessibility flags).
 
 ---
 

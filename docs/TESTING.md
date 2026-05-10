@@ -33,8 +33,8 @@ Test infra:
 - **Integration tests**: `<scenario>.test.ts` inside `server/__integration__/`. Name by what's being tested across modules (`isolation`, `tenantIsolation`, etc.), not by a single source file.
 - **E2E tests**: `<feature>.spec.ts` inside `testing/e2e/`. Use `.spec.ts` (not `.test.ts`) — Playwright's default discovery pattern.
 - **Sub-aspect splits**: when one source file has multiple tightly-scoped test concerns, append a dotted suffix:
-  - `server/services/membership.test.ts` — module-level behavior
-  - `server/services/membership.atomic.test.ts` — atomicity / race-condition coverage
+  - `server/services/bootstrap.atomic.test.ts` — atomicity / race-condition coverage for `bootstrap.ts`
+  - Pair the dotted-suffix file with the regular `<source>.test.ts` for module-level behavior. Only split when the second concern justifies its own setup; don't split for organisational neatness.
 
 ---
 
@@ -57,8 +57,8 @@ docker compose exec server npx vitest run server/services/archive.test.ts
 # Single test by name
 docker compose exec server npx vitest run -t "tenant isolation"
 
-# E2E (Playwright)
-npm run test:e2e
+# E2E (Playwright — runs on host with CI=1)
+npx playwright test
 
 # Local CI (everything)
 powershell -File scripts/ci.ps1
@@ -122,14 +122,19 @@ New features ship with E2E specs **before** component unit tests.
 
 ## CI
 
-There is no remote CI for this repo. The single source of truth is `scripts/ci.ps1`, run locally before push. It executes:
+There is no remote CI for this repo. The single source of truth is `scripts/ci.ps1`, run locally before push. It executes (in order):
 
 | Step | What it checks |
 |---|---|
 | `typecheck` | `tsc --noEmit` on server and client |
-| `test-client` | Client unit tests (Vitest + jsdom) |
+| `tenant-isolation-guard` | `check-trpc-tenant-isolation.mjs` — blocks non-allowlisted client-supplied `partnerId` |
+| `e2e-skip-guard` | `check-e2e-skip-guard.ps1` — rejects `.skip` / `.only` in committed e2e specs |
+| `lint` | `eslint` on server and client |
+| `audit` | `npm audit --audit-level=high` on server and client |
 | `test-server` | Server unit tests (Vitest + node) |
+| `test-client` | Client unit tests (Vitest + jsdom) |
 | `migrate` | Drizzle migrations against the Docker Postgres |
-| `e2e` | Playwright E2E tests (builds client first) |
+| `build` | `vite build` for the client |
+| `e2e` | Playwright E2E tests (`npx playwright test` with `CI=1`) |
 
 Push only when `scripts/ci.ps1` is green.

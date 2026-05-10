@@ -10,20 +10,22 @@ Calm, polished, dense. Three-panel workspace (queue / chat / context). Focus on 
 
 All colors, radii, shadows, and spacing are CSS custom properties in [`client/src/index.css`](../client/src/index.css). **Never hardcode hex or px values in components** — use tokens. New tokens get added to `index.css` and documented here.
 
+> **Naming note.** The canonical tokens are unprefixed (`--color-bg`, `--color-surface`, `--color-elevated`, `--color-hover`, `--color-whisper`). The longer `--color-bg-base` / `--color-bg-surface` / `--color-bg-elevated` / `--color-bg-hover` / `--color-whisper-bg` aliases survive as backward-compat indirections in `index.css`. **Use the canonical names in new code.**
+
 ### Palette — Light
 
 | Token | Value |
 |---|---|
-| `--color-bg-base` | `#f5f6fa` |
-| `--color-bg-surface` | `#ffffff` |
-| `--color-bg-elevated` | `#f7f8fb` |
-| `--color-bg-hover` | `#eef0f6` |
+| `--color-bg` | `#f5f6fa` |
+| `--color-surface` | `#ffffff` |
+| `--color-elevated` | `#f7f8fb` |
+| `--color-hover` | `#eef0f6` |
 | `--color-border` | `#e6e8ef` |
 | `--color-border-strong` | `#d4d7e0` |
 | `--color-ink` | `#14162b` |
 | `--color-ink-soft` | `#4d5069` |
 | `--color-ink-muted` | `#878ba1` |
-| `--color-whisper-bg` | `#fff4e6` |
+| `--color-whisper` | `#fff4e6` |
 | `--color-whisper-ink` | `#a15c1f` |
 | `--color-urgent` | `#d64545` |
 | `--color-urgent-soft` | `#fde9e9` |
@@ -35,16 +37,16 @@ All colors, radii, shadows, and spacing are CSS custom properties in [`client/sr
 
 | Token | Value |
 |---|---|
-| `--color-bg-base` | `#0e1020` |
-| `--color-bg-surface` | `#171a30` |
-| `--color-bg-elevated` | `#1e2139` |
-| `--color-bg-hover` | `#262a44` |
+| `--color-bg` | `#0e1020` |
+| `--color-surface` | `#171a30` |
+| `--color-elevated` | `#1e2139` |
+| `--color-hover` | `#262a44` |
 | `--color-border` | `#252840` |
 | `--color-border-strong` | `#373c5a` |
 | `--color-ink` | `#eceef5` |
 | `--color-ink-soft` | `#a8acc3` |
 | `--color-ink-muted` | `#6f7391` |
-| `--color-whisper-bg` | `#3a2a1a` |
+| `--color-whisper` | `#3a2a1a` |
 | `--color-whisper-ink` | `#e8b88a` |
 | `--color-urgent` | `#ff7a7a` |
 | `--color-urgent-soft` | `#3a1e1e` |
@@ -65,7 +67,7 @@ All colors, radii, shadows, and spacing are CSS custom properties in [`client/sr
 
 | Token | Value |
 |---|---|
-| `--shadow` | `0 1px 2px rgba(16,20,45,0.04), 0 1px 1px rgba(16,20,45,0.03)` |
+| `--shadow-soft` | `0 1px 2px rgba(16,20,45,0.04), 0 1px 1px rgba(16,20,45,0.03)` |
 | `--shadow-card` | `0 1px 3px rgba(16,20,45,0.06), 0 8px 24px rgba(16,20,45,0.04)` |
 | `--shadow-modal` | `0 20px 48px rgba(16,20,45,0.24), 0 4px 12px rgba(16,20,45,0.1)` |
 
@@ -73,7 +75,7 @@ All colors, radii, shadows, and spacing are CSS custom properties in [`client/sr
 
 | Token | Value |
 |---|---|
-| `--shadow` | `0 1px 2px rgba(0,0,0,0.3)` |
+| `--shadow-soft` | `0 1px 2px rgba(0,0,0,0.3)` |
 | `--shadow-card` | `0 1px 3px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.25)` |
 | `--shadow-modal` | `0 20px 48px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)` |
 
@@ -131,7 +133,7 @@ Purposeful only. Never decorative. Theme transitions are the only background/col
 | Keyframe | Effect | Duration | Used on |
 |---|---|---|---|
 | `v2p-slide-in` | opacity 0→1, translateY 8→0 | 260ms ease-out | new messages, toasts |
-| `v2p-fade` | opacity 0→1 | 150ms ease-out | modal scrim |
+| `fade-in` | opacity 0→1 | 150ms ease-out | modal scrim |
 | `v2p-pop` | opacity 0→1, scale 0.96→1 | 180ms ease-out | modal cards |
 | `v2p-pulse` | opacity 1↔0.55 | 1.8s ease-in-out infinite | unread badges |
 | `v2p-dot` | translateY 0↔-4, opacity 0.4↔1 | 1s, stagger 0.15s | typing dots |
@@ -146,12 +148,12 @@ Short rule set — the long-form shape/size details are in the prototype (`desig
 ### Button
 
 - Primary: `bg: var(--color-accent)`, `color: #fff`, no border, radius 8, padding `7px 14px`, font-size 13, weight 500.
-- Secondary: `bg: var(--color-bg-surface)`, `color: var(--color-ink)`, `border: 1px solid var(--color-border-strong)`, `box-shadow: var(--shadow)`, same radius/padding/size.
+- Secondary: `bg: var(--color-surface)`, `color: var(--color-ink)`, `border: 1px solid var(--color-border-strong)`, `box-shadow: var(--shadow-soft)`, same radius/padding/size.
 - Disabled: `opacity: 0.4`, `cursor: not-allowed`.
 
 ### Card / panel
 
-- `bg: var(--color-bg-surface)`, `border-radius: 14px`, `box-shadow: var(--shadow-card)`.
+- `bg: var(--color-surface)`, `border-radius: 14px`, `box-shadow: var(--shadow-card)`.
 - Full-height in the three-panel layout; `overflow: hidden` unless scrollable content.
 
 ### Chip / pill
@@ -162,10 +164,10 @@ Short rule set — the long-form shape/size details are in the prototype (`desig
 ### Message bubble
 
 - Self: `bg: var(--color-accent-soft)`, border `1px solid var(--color-accent)22` (hex alpha).
-- Other: `bg: var(--color-bg-elevated)`, border `1px solid var(--color-border)`.
+- Other: `bg: var(--color-elevated)`, border `1px solid var(--color-border)`.
 - Padding `10px 14px`, font-size 15, line-height 1.55.
 - Default shape: **tailed** (12px radius, corner near avatar cut to 4px).
-- Whisper: full-width centered max-width 640, `bg: var(--color-whisper-bg)`, dashed `1px solid var(--color-whisper-ink)`, radius 10. Lock emoji header.
+- Whisper: full-width centered max-width 640, `bg: var(--color-whisper)`, dashed `1px solid var(--color-whisper-ink)`, radius 10. Lock emoji header.
 
 ### Avatar
 
@@ -174,9 +176,9 @@ Short rule set — the long-form shape/size details are in the prototype (`desig
 
 ### Modal
 
-- Scrim: fixed inset-0, `bg: var(--color-scrim)`, `v2p-fade` 150ms.
+- Scrim: fixed inset-0, `bg: var(--color-scrim)`, `fade-in` 150ms.
 - Card: 440 wide, radius 14, `box-shadow: var(--shadow-modal)`, `v2p-pop` 180ms.
-- Footer: `bg: var(--color-bg-elevated)`, right-aligned action row, top border.
+- Footer: `bg: var(--color-elevated)`, right-aligned action row, top border.
 
 ### Toast
 
@@ -199,7 +201,7 @@ Future (out of scope for redesign): high-contrast mode (AAA), text-scale multipl
 ## Mandates for new features
 
 1. **Token-only styling.** No hex literals, no hardcoded shadows, no hardcoded radii in `*.tsx`. Use `var(--...)` or Tailwind utilities that map to tokens.
-2. **Compose from shared primitives.** Use `<Button>`, `<Card>`, `<Pill>`, `<Modal>`, `<Avatar>`, `<Toast>` — don't hand-roll.
+2. **Compose from shared primitives.** Use `<Button>`, `<Card>`, `<Pill>`, `<Modal>`, `<FormModal>`, `<Avatar>`, `<Toast>`, `<SectionLabel>`, `<SidebarNav>`, `<UserMenuChip>` — don't hand-roll.
 3. **Font rule.** Inter for prose, JetBrains Mono only for code / IDs / inline code.
 4. **Motion whitelist.** Use documented keyframes only. Respect `prefers-reduced-motion`.
 5. **Theme parity.** Every new component must work in both `.dark` and default theme. Test both. Monochrome + dyslexic should inherit automatically if tokens are used.
@@ -210,4 +212,4 @@ Future (out of scope for redesign): high-contrast mode (AAA), text-scale multipl
 
 - Prototype source: `D:/Projects_Coding/design_handoff_chat_redesign/`
 - Tokens: [`client/src/index.css`](../client/src/index.css)
-- Primitives: `client/src/components/ui/` (introduced in phase 2 of the redesign)
+- Primitives: `client/src/components/ui/` — Avatar, Button, Card, FormModal, Modal, Pill, SectionLabel, SidebarNav, Toast, ToastProvider, UserMenuChip
