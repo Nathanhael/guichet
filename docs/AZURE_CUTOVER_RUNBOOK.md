@@ -228,9 +228,6 @@ explicitly accepted before going live:
   and `gdpr.ts` cascade) but have only been smoke-tested locally. Validate
   in a staging blob container before prod cutover, not after. (Per the
   `uploads_azure_gdpr_test_pending` memory note.)
-- **`Dockerfile_azure` files are byte-identical to `Dockerfile.prod`.** Pick
-  one path for the prod pipeline, document which one is canonical, and
-  delete or alias the other to prevent future drift.
 - **Caddyfile is not used in Azure Container Apps.** It's only the docker-
   compose stack's TLS-terminating reverse proxy. Ingress + TLS cert on the
   CA itself replaces it. Don't ship Caddy with the Azure deploy.
