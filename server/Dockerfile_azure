@@ -21,6 +21,11 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
+# Migration artifacts — kept in the runtime image so `npm run db:migrate`
+# works inside a running container (e.g. `az containerapp exec --command "npm run db:migrate"`).
+# drizzle-kit is in `dependencies` (not devDependencies) so it survives `--omit=dev`.
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/drizzle.config.ts ./
 RUN mkdir -p uploads && chown -R node:node /app
 USER node
 EXPOSE 3001

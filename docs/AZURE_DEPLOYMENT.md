@@ -17,6 +17,21 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 | `COOKIE_SECURE` | `true` | Mandatory in production |
 | `COOKIE_DOMAIN` | `.example.com` | Set if using subdomains |
 | `PLATFORM_ADMIN_EMAIL` | `admin@example.com` | Auto-creates platform operator on first boot |
+| `FIELD_ENCRYPTION_SECRET` | 64-char hex string | **Required** when `AI_ENABLED=true` (server FATALs at boot otherwise). Encrypts AI keys + webhook secrets at rest. |
+| `DEMO_MODE` | `false` | **Must be `false` (or unset) in production** — server FATALs at boot if true. Trial / demo deployments only. |
+| `ACCESS_TOKEN_EXPIRY` | `15m` | JWT access-token lifetime (default `15m`). |
+| `REFRESH_TOKEN_EXPIRY` | `7d` | Refresh-token lifetime (default `7d`). The `guichet_refresh` HttpOnly cookie is path-restricted to `/api/v1/auth/refresh` — make sure ingress / WAF rules don't strip cookies on that path. |
+
+**Azure SSO** (Guichet is SSO-only in production — without these, no one can log in):
+
+| Variable | Example | Notes |
+|----------|---------|-------|
+| `AZURE_AD_TENANT_ID` | `xxxx-xxxx-xxxx-xxxx` | Entra tenant id |
+| `AZURE_AD_CLIENT_ID` | `xxxx-xxxx-xxxx-xxxx` | App registration client id |
+| `AZURE_AD_CLIENT_SECRET` | `secret...` | App registration client secret |
+| `AZURE_AD_REDIRECT_URI` | `https://guichet.example.com/api/v1/auth/azure/callback` | Must match the Entra app registration |
+
+See `docs/SSO_SETUP_RUNBOOK.md` for the full SSO setup walkthrough.
 
 **Azure Storage** (omit for local disk fallback):
 
@@ -29,8 +44,7 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `FIELD_ENCRYPTION_SECRET` | — | 64-char hex for encrypted fields |
-| `AI_ENABLED` | `false` | Enable AI features (requires provider config) |
+| `AI_ENABLED` | `false` | Enable AI features. Requires provider config (`AI_PROVIDER`, `AZURE_OPENAI_*` or compatible) **and** `FIELD_ENCRYPTION_SECRET` — server FATALs at boot if AI is on without the encryption key. |
 
 ## WebSocket: Sticky Sessions
 
@@ -91,8 +105,8 @@ Returns `200 { status: "ok", database: "connected", redis: "connected", storage:
 Guichet uses a storage backend abstraction. When `AZURE_STORAGE_CONNECTION_STRING` is set, uploads go to Azure Blob Storage. Otherwise, they use local disk (dev/Docker only).
 
 - Container is created as **private** — blobs are not publicly accessible
-- All file access goes through the auth-gated `/uploads` proxy
-- GDPR purge automatically deletes associated files from blob storage
+- All file access goes through the auth-gated `/uploads` proxy (`server/middleware/uploadProxy.ts`)
+- GDPR purge has a cascade-delete code path against Azure Blob, but it is currently **untested against a real Azure container** — verify in staging before relying on it for compliance.
 - Global memory guard caps concurrent upload buffering at 100MB
 
 ## Database
@@ -104,9 +118,25 @@ DATABASE_URL=postgresql://guichet:password@guichet-db.postgres.database.azure.co
 ```
 
 Run migrations on first deploy:
+
 ```bash
+# Local Docker stack
 docker compose exec server npm run db:migrate
+
+# Azure Container Apps — exec inside the running server CA
+az containerapp exec \
+  --name ca-guichet-server \
+  --resource-group rg-guichet \
+  --command "npm run db:migrate"
 ```
+
+The runtime image ships `drizzle/` (migration SQL + journal) and `drizzle-kit`
+in `dependencies` (not devDependencies), so `npm run db:migrate` works inside
+the prod container without any extra build step.
+
+For zero-downtime cutovers, run the migration **before** rolling new server
+revisions when migrations only add nullable columns / new tables. For
+breaking schema changes, expand → migrate → contract across two releases.
 
 ## Container Registry
 
@@ -123,6 +153,9 @@ docker push guichetregistry.azurecr.io/guichet-client:latest
 
 ## Monitoring
 
-The server exposes Prometheus metrics at `/metrics` (root path, not under `/api/v1/`). For Azure Monitor integration, add `@azure/monitor-opentelemetry` (not yet implemented — use Prometheus scraping or a sidecar exporter in the interim).
+Guichet does **not** ship a Prometheus metrics endpoint. Operations signal comes from:
+- Structured JSON logs (Pino) on stdout — Azure Container Apps automatically ingests these into Log Analytics.
+- The `/api/v1/health` probe (Postgres + Redis + storage).
+- The in-app **Health page** in PlatformView (chain-broken / chain-stale / SLA breach burst / GDPR purge missing or failed). See `docs/AUDIT_RUNBOOK.md`.
 
-Structured JSON logs (Pino) are written to stdout — Azure Container Apps automatically ingests these into Log Analytics.
+For deeper APM, attach `@azure/monitor-opentelemetry` to the runtime — it is not bundled.

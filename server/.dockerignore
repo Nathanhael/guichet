@@ -3,7 +3,6 @@ uploads
 .env
 .env.*
 .git
-drizzle
 scripts
 backups
 **/*.test.ts
