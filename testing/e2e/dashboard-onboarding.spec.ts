@@ -77,7 +77,10 @@ test.describe('Admin Dashboard — onboarding mode', () => {
     await page.goto(`${BASE}/`);
     await page.waitForLoadState('load');
 
-    await expect(page.getByTestId('dashboard-zone-actions')).toBeVisible();
+    // The action-list zone (dashboard-zone-actions) was removed in ca93d28;
+    // the surviving 5-zone layout is scorecard / staffing / trends / breakdown.
+    // Use scorecard as the canonical "normal dashboard rendered" signal.
+    await expect(page.getByTestId('dashboard-zone-scorecard')).toBeVisible();
     await expect(page.getByText('Add your departments')).toHaveCount(0);
   });
 
