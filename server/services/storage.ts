@@ -154,101 +154,6 @@ class AzureBlobStorage implements StorageBackend {
   }
 }
 
-// ── AWS S3 Backend ─────────────────────────────────────────────────────────────
-
-class S3Storage implements StorageBackend {
-  private clientPromise: Promise<{ s3: import('@aws-sdk/client-s3').S3Client; bucket: string }> | null = null;
-
-  private getClient() {
-    if (!this.clientPromise) this.clientPromise = this._init();
-    return this.clientPromise;
-  }
-
-  private async _init() {
-    const { S3Client, CreateBucketCommand, HeadBucketCommand } = await import('@aws-sdk/client-s3');
-    const bucket = config.AWS_S3_BUCKET!;
-    const s3 = new S3Client({
-      region: config.AWS_REGION || 'eu-west-1',
-      ...(config.AWS_ACCESS_KEY_ID && config.AWS_SECRET_ACCESS_KEY ? {
-        credentials: {
-          accessKeyId: config.AWS_ACCESS_KEY_ID,
-          secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
-        },
-      } : {}),
-    });
-    try {
-      await s3.send(new HeadBucketCommand({ Bucket: bucket }));
-    } catch {
-      try {
-        await s3.send(new CreateBucketCommand({ Bucket: bucket }));
-      } catch (err: unknown) {
-        // BucketAlreadyOwnedByYou / BucketAlreadyExists are race-with-sibling
-        // boot outcomes — both mean the bucket is usable. Anything else is a
-        // real failure (perms, network, region mismatch) and must surface so
-        // the "bucket ready" log below never lies to ops.
-        const name = (err as { name?: string } | null)?.name ?? '';
-        if (name !== 'BucketAlreadyOwnedByYou' && name !== 'BucketAlreadyExists') {
-          throw err;
-        }
-      }
-    }
-    logger.info({ bucket }, '[storage:s3] bucket ready');
-    return { s3, bucket };
-  }
-
-  async upload(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
-    assertSafeFilename(filename);
-    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
-    const { s3, bucket } = await this.getClient();
-    await s3.send(new PutObjectCommand({
-      Bucket: bucket,
-      Key: filename,
-      Body: buffer,
-      ContentType: mimeType,
-    }));
-    return `/uploads/${filename}`;
-  }
-
-  async delete(filename: string): Promise<void> {
-    try {
-      assertSafeFilename(filename);
-      const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-      const { s3, bucket } = await this.getClient();
-      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: filename }));
-    } catch (err) {
-      logger.warn({ filename, err }, '[storage:s3] failed to delete object');
-    }
-  }
-
-  getUrl(filename: string): string {
-    return `/uploads/${filename}`;
-  }
-
-  async read(filename: string): Promise<Buffer> {
-    assertSafeFilename(filename);
-    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    const { s3, bucket } = await this.getClient();
-    const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: filename }));
-    const stream = response.Body as AsyncIterable<Buffer>;
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    return Buffer.concat(chunks);
-  }
-
-  async healthy(): Promise<boolean> {
-    try {
-      const { HeadBucketCommand } = await import('@aws-sdk/client-s3');
-      const { s3, bucket } = await this.getClient();
-      await s3.send(new HeadBucketCommand({ Bucket: bucket }));
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
 // ── Factory ────────────────────────────────────────────────────────────────────
 
 let instance: StorageBackend | null = null;
@@ -258,9 +163,6 @@ export function getStorage(): StorageBackend {
     if (config.AZURE_STORAGE_CONNECTION_STRING) {
       instance = new AzureBlobStorage();
       logger.info('[storage] using Azure Blob Storage backend');
-    } else if (config.AWS_S3_BUCKET) {
-      instance = new S3Storage();
-      logger.info('[storage] using AWS S3 backend');
     } else {
       instance = new LocalStorage();
       logger.info('[storage] using local filesystem backend');
