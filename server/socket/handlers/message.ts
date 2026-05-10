@@ -91,19 +91,21 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketForMessage);
       if (!ticket || ticket.status === 'closed') return;
 
-      // Build viewerLangs only when cross-lang prewarm might apply
-      // (matches legacy gating: skip the local-node socket iteration if
-      // the ticket's agentLang matches the sender's lang).
-      let viewerLangs: Set<string> | undefined;
-      if (ticket.agentLang && ticket.agentLang !== actor.lang) {
-        viewerLangs = new Set<string>();
-        const room = Rooms.ticket(ticketId);
-        for (const peer of ctx.io.sockets.sockets.values()) {
-          if (peer.id === socket.id) continue;
-          if (!peer.rooms.has(room)) continue;
-          const lg = (peer.data.lang as string) || '';
-          if (lg) viewerLangs.add(lg);
-        }
+      // Always build viewerLangs from peers actually in the ticket room.
+      // The legacy gate (`agentLang !== actor.lang`) skipped the typical
+      // case where the agent themselves sends a msg in agentLang while
+      // a support reads in another lang — leaving live agent msgs
+      // un-prewarmed and forcing per-msg flicker on the support's side.
+      // send.ts:prewarm filters out senderLang itself, so passing an
+      // unfiltered set here is safe; an empty set short-circuits the
+      // prewarm path anyway.
+      const viewerLangs = new Set<string>();
+      const room = Rooms.ticket(ticketId);
+      for (const peer of ctx.io.sockets.sockets.values()) {
+        if (peer.id === socket.id) continue;
+        if (!peer.rooms.has(room)) continue;
+        const lg = (peer.data.lang as string) || '';
+        if (lg) viewerLangs.add(lg);
       }
 
       const result = await ctx.messageLifecycle.send({

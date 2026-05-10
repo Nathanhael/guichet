@@ -4,6 +4,42 @@
  * Used by both the tRPC ai router and the fire-and-forget autoSummarize
  * service. Extracted to avoid duplicating the gate → limit → prompt → call → log
  * pipeline in multiple places.
+ *
+ * ─── Model strategy (chosen 2026-05-10 after A/B sweep) ─────────────────────
+ *
+ * Production: `gpt-4o` (deployment name = model name on `oai-guichet-trial-brk`).
+ * Quality 6/6 across NL/FR/EN improve cases, ~$0.0006 per call, no reasoning
+ * tokens. Single deployment, single config — simplest to operate.
+ *
+ * Why not the cheaper GPT-5 family at face-value pricing:
+ * - GPT-5 mini/nano are *reasoning models*. Without `reasoning_effort`
+ *   override they emit hundreds of reasoning_tokens (billed but invisible)
+ *   that dominate cost. Measured: gpt-5-mini @ default = $0.0012/call
+ *   (2× pricier than gpt-4o despite cheaper per-token rate).
+ * - `reasoning_effort: minimal` collapses reasoning to 0 BUT broke improve
+ *   quality in 5/6 cases on nano (echoed input or hallucinated language
+ *   switch). 5.4-mini @ minimal: 3/6.
+ * - Only viable cheap pathway: gpt-5.4-mini @ medium (~$0.00026/call,
+ *   5.5/6 quality). Worth it only if monthly volume scales past ~$20/mo
+ *   on gpt-4o (~30k chats/mo).
+ *
+ * Future optimization path (when prod volume justifies it):
+ * 1. Downgrade `apiVersion` in azure-openai.ts to `2025-03-01-preview`
+ *    (the current `2025-04-01-preview` rejects `reasoning_effort` with 400).
+ * 2. Add `reasoningEffort` field to ChatParams in types.ts.
+ * 3. Forward in azure-openai.ts chat() / chatStream() bodies.
+ * 4. Set per-action map here:
+ *      translate: 'minimal'  (mechanical, works fine)
+ *      improve:   'medium'   (needed for quality)
+ *      classify:  'minimal'
+ *      suggest:   'low'
+ *      match_canned: 'minimal'
+ * 5. Swap deployment to gpt-5.4-mini-2026-03-17 (GlobalStandard quota).
+ *
+ * Azure naming gotcha: deployment name → model binding is sticky in the
+ * data plane for hours after delete+recreate with the same name. Always
+ * use a fresh deployment name when swapping the underlying model, then
+ * update `AZURE_OPENAI_DEPLOYMENT` env var.
  */
 
 import { TRPCError } from '@trpc/server';
