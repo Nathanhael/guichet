@@ -28,6 +28,14 @@ server/**/*.js
 *.sqlite-journal
 *.sqlite-shm
 *.sqlite-wal
+
+# Migration squash output — regenerated at prod cutover time, see
+# docs/AZURE_CUTOVER_RUNBOOK.md "Migration strategy" → squash path.
+server/drizzle-prod-squash/
+
+# Scratch schema diffs from squash verification
+.schema-*.sql
+.schema-diff.txt
 server/database.sqlite*
 server/backups/
 
