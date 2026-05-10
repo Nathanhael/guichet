@@ -20,11 +20,12 @@ export default defineConfig({
     // hosts) tipped over the OOM threshold inside the server container,
     // killing `docker compose exec server npm test` with exit code 137
     // mid-run. 4 keeps peak PGLite memory well under 1 GB and full
-    // suite still runs in ~3.5 min.
-    poolOptions: {
-      threads: {
-        maxThreads: 4,
-      },
-    },
+    // suite still runs in ~2.5 min.
+    //
+    // Vitest 4 default pool is `forks` (was `threads` in v2). The
+    // top-level `maxWorkers` knob applies regardless of pool choice;
+    // `poolOptions.threads.maxThreads` is the older v2/v3 shape and
+    // is no longer in `InlineConfig` types — `tsc --noEmit` rejects it.
+    maxWorkers: 4,
   },
 });
