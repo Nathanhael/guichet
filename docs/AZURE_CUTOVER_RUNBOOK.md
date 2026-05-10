@@ -223,14 +223,16 @@ Database rollback is **not** a one-liner. If a migration broke prod:
 These are tracked in repo memory / the wiki and need to be resolved or
 explicitly accepted before going live:
 
-- **Azure Blob upload + GDPR cascade-delete are untested against a real
-  Azure container.** The code paths exist (`storage.ts AzureBlobStorage`
-  and `gdpr.ts` cascade) but have only been smoke-tested locally. Validate
-  in a staging blob container before prod cutover, not after. (Per the
-  `uploads_azure_gdpr_test_pending` memory note.)
 - **Caddyfile is not used in Azure Container Apps.** It's only the docker-
   compose stack's TLS-terminating reverse proxy. Ingress + TLS cert on the
   CA itself replaces it. Don't ship Caddy with the Azure deploy.
+
+(Previously listed: *Azure Blob upload + GDPR cascade-delete untested
+against a real container.* Resolved 2026-05-10 — the `getStorage()`
+refactor of `server/scripts/test_gdpr_purge.ts` ran the full upload →
+30 d cascade against `stguichettrialbrk` / `uploads-gdpr-test`, 17/17
+passing, with `az storage blob list` confirming the container empty
+post-purge. See `[[learnings/guichet-prod-readiness-sweep-2026-05-10]]`.)
 
 ---
 
