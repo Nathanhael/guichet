@@ -127,10 +127,9 @@ export default function AdminAi() {
         <div className="mt-4 space-y-4">
           <div>
             <label className={FIELD_LABEL} htmlFor="ai-preserve">{t('admin_ai_glossary_preserve_label')}</label>
-            <input
+            <textarea
               id="ai-preserve"
-              type="text"
-              className={inputCls}
+              className={`${inputCls} min-h-[64px] max-h-[40vh] [field-sizing:content] resize-y`}
               value={preserve}
               onChange={e => setPreserve(e.target.value)}
               placeholder="FTTP, MVNO, VoIP"
@@ -141,10 +140,9 @@ export default function AdminAi() {
           </div>
           <div>
             <label className={FIELD_LABEL} htmlFor="ai-forbidden">{t('admin_ai_glossary_forbidden_label')}</label>
-            <input
+            <textarea
               id="ai-forbidden"
-              type="text"
-              className={inputCls}
+              className={`${inputCls} min-h-[64px] max-h-[40vh] [field-sizing:content] resize-y`}
               value={forbidden}
               onChange={e => setForbidden(e.target.value)}
               placeholder="competitor name"
@@ -166,7 +164,7 @@ export default function AdminAi() {
               <p className={`${FIELD_HELP} mt-0 mb-1.5`}>{help}</p>
               <textarea
                 id={id}
-                className={`${inputCls} min-h-[260px] text-[12px]`}
+                className={`${inputCls} min-h-[140px] max-h-[70vh] text-[12px] [field-sizing:content] resize-y`}
                 value={value}
                 maxLength={MAX_INSTRUCTION}
                 onChange={e => set(e.target.value)}
