@@ -209,8 +209,11 @@ export class AzureOpenAiProvider implements AiProvider {
     }
     let result: boolean;
     try {
-      // Non-billable check: list deployments endpoint (no inference cost)
-      const listUrl = `${this.baseUrl}/openai/deployments?api-version=${this.apiVersion}`;
+      // Non-billable check: list models endpoint (no inference cost). The
+      // sibling /openai/deployments path 404s on api-versions ≥ 2024-* —
+      // it's a control-plane URL that requires AAD auth. /openai/models is
+      // the data-plane probe that just validates the api-key + endpoint.
+      const listUrl = `${this.baseUrl}/openai/models?api-version=${this.apiVersion}`;
       const res = await fetch(listUrl, {
         method: 'GET',
         headers: { 'api-key': this.apiKey },
