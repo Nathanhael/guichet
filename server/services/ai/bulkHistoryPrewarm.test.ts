@@ -17,9 +17,11 @@ vi.mock('./config.js', () => ({
   isFeatureEnabled: (...args: unknown[]) => mockIsFeatureEnabled(...args),
 }));
 
+const warnSpy = vi.fn();
+const debugSpy = vi.fn();
 vi.mock('./context.js', () => ({
   getAiContext: () => ({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    logger: { info: vi.fn(), warn: warnSpy, error: vi.fn(), debug: debugSpy },
   }),
 }));
 
@@ -252,6 +254,47 @@ describe('prewarmHistoryTranslations', () => {
 
     expect(out.size).toBe(0);
     expect(mockRunAiAction).not.toHaveBeenCalled();
+  });
+
+  it('logs at warn level when EVERY target fails (zero translations completed)', async () => {
+    const messages = [msg('m1'), msg('m2')];
+    mockRunAiAction.mockRejectedValue(new Error('AOAI 503'));
+
+    const out = await prewarmHistoryTranslations({ ...baseOpts, messages });
+
+    expect(out.size).toBe(0);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][1]).toMatch(/zero translations completed/);
+    expect(debugSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs at debug level (NOT warn) when partial — some succeed, some fail', async () => {
+    const messages = [msg('m1'), msg('m2'), msg('m3')];
+    mockRunAiAction.mockImplementation(({ vars }: { vars: { text: string; targetLang: string } }) => {
+      const callIndex = mockRunAiAction.mock.calls.length - 1;
+      if (callIndex === 0) return Promise.reject(new Error('rate limited'));
+      return Promise.resolve({ content: `[${vars.targetLang}] ${vars.text}`, model: 'm', usageLogId: null });
+    });
+
+    const out = await prewarmHistoryTranslations({ ...baseOpts, messages });
+
+    expect(out.size).toBe(2);
+    expect(debugSpy).toHaveBeenCalledTimes(1);
+    expect(debugSpy.mock.calls[0][1]).toMatch(/partial/);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns a snapshot — mutating the returned Map cannot affect a parallel run', async () => {
+    const messages = [msg('m1')];
+    const out = await prewarmHistoryTranslations({ ...baseOpts, messages });
+
+    expect(out.get('m1')).toBe('[Dutch] hello world');
+    out.delete('m1');
+
+    // A subsequent independent run does not see the previous mutation —
+    // proves there's no module-level shared state via the result Map.
+    const out2 = await prewarmHistoryTranslations({ ...baseOpts, messages });
+    expect(out2.get('m1')).toBe('[Dutch] hello world');
   });
 
   it('respects budget cap — returns whatever finished, does not throw', async () => {
