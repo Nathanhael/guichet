@@ -288,8 +288,12 @@ app.use('/uploads', uploadProxyHandler);
 // API v1 Routing
 const v1Router = express.Router();
 
-// API Documentation (Swagger UI) — disabled in production to save 12 MB
-if (process.env.NODE_ENV !== 'production') {
+// API Documentation (Swagger UI) — opt-in via ENABLE_API_DOCS=true. We do NOT
+// key off `NODE_ENV !== 'production'` because the Azure trial runs
+// NODE_ENV=development with prod-only dependencies installed, so the dynamic
+// import below would crash at boot looking for swagger-ui-express. Local
+// docker compose sets ENABLE_API_DOCS=true; trial + real prod leave it unset.
+if (process.env.ENABLE_API_DOCS === 'true') {
   const swaggerUi = await import('swagger-ui-express');
   const { openapiSpec } = await import('./docs/openapi.js');
   v1Router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {

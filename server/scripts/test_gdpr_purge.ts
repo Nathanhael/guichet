@@ -8,9 +8,6 @@
  * Usage (inside the server container):
  *   docker compose exec server npx tsx server/scripts/test_gdpr_purge.ts
  */
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { eq, and, sql, gte } from 'drizzle-orm';
 import { db } from '../db.js';
 import {
@@ -20,9 +17,9 @@ import {
 } from '../db/schema.js';
 import { runDailyPurge } from './../services/gdpr.js';
 import { verifyAuditChain } from '../services/archive.js';
+import { getStorage } from '../services/storage.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+const storage = getStorage();
 
 const ts = Date.now();
 const PARTNER_ID = `gdpr-test-${ts}`;
@@ -94,8 +91,8 @@ async function seed() {
     closedBy: SUPPORT_ID,
   });
 
-  fs.writeFileSync(path.join(UPLOAD_DIR, FILE1), Buffer.from('fake-png'));
-  fs.writeFileSync(path.join(UPLOAD_DIR, FILE2), Buffer.from('fake-pdf'));
+  await storage.upload(Buffer.from('fake-png'), FILE1, 'image/png');
+  await storage.upload(Buffer.from('fake-pdf'), FILE2, 'application/pdf');
 
   await db.insert(messages).values([
     {
@@ -191,10 +188,10 @@ async function assertPurged() {
   const arch = await db.select().from(archivedTickets).where(eq(archivedTickets.id, TICKET_ID));
   check('archived_tickets row exists', arch.length === 1, `found=${arch.length}`);
 
-  const f1Exists = fs.existsSync(path.join(UPLOAD_DIR, FILE1));
-  const f2Exists = fs.existsSync(path.join(UPLOAD_DIR, FILE2));
-  check('upload file 1 deleted from disk', !f1Exists);
-  check('upload file 2 deleted from disk', !f2Exists);
+  const f1Exists = await storage.read(FILE1).then(() => true).catch(() => false);
+  const f2Exists = await storage.read(FILE2).then(() => true).catch(() => false);
+  check('upload file 1 deleted from storage', !f1Exists);
+  check('upload file 2 deleted from storage', !f2Exists);
 
   const purgeAudit = await db.select().from(auditLog)
     .where(and(eq(auditLog.action, 'system.gdpr_purge'), gte(auditLog.createdAt, scriptStart)));
@@ -207,8 +204,7 @@ async function cleanup() {
     await db.delete(partners).where(eq(partners.id, PARTNER_ID));
     await db.delete(users).where(sql`${users.id} IN (${AGENT_ID}, ${SUPPORT_ID})`);
     for (const f of [FILE1, FILE2]) {
-      const p = path.join(UPLOAD_DIR, f);
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+      await storage.delete(f).catch(() => {});
     }
     console.log('[cleanup] OK');
   } catch (err) {

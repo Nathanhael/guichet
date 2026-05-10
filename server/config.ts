@@ -84,6 +84,8 @@ const parseResult = configSchema.safeParse({
     LOG_LEVEL: process.env.LOG_LEVEL,
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
     UPLOAD_ALLOWED_TYPES: process.env.UPLOAD_ALLOWED_TYPES,
+    AZURE_STORAGE_CONNECTION_STRING: process.env.AZURE_STORAGE_CONNECTION_STRING,
+    AZURE_STORAGE_CONTAINER: process.env.AZURE_STORAGE_CONTAINER,
     REDIS_URL: process.env.REDIS_URL,
     AI_ENABLED: process.env.AI_ENABLED,
     AI_PROVIDER: process.env.AI_PROVIDER,
