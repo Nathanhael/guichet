@@ -9,14 +9,20 @@ const insertValuesMock = vi.fn(() => ({ onConflictDoUpdate: insertOnConflictMock
 // Track the orderBy mock separately so tests can set return values
 const orderByMock = vi.fn(async () => []);
 
+// Per-test queue of `where()` results consumed in call order. Empty queue → []
+// (the default the existing tests rely on). Tests that need ratings or messages
+// query results push them in the order gdpr.ts issues the queries: ratings, then
+// messages.
+const whereResultQueue: unknown[][] = [];
+
 // Each db.select() call creates a fresh chain. The `where` result has an
 // optional `.orderBy` (used by the ticket query) and `.limit` (used by the
 // invite-cleanup query) — when absent the `where` itself is awaited
 // (ratings/messages queries).
 function makeSelectChain() {
   const whereMock = vi.fn((..._args: unknown[]) => {
-    // Return a thenable that also exposes `.orderBy` and `.limit`
-    const p = Promise.resolve([]);
+    const next = whereResultQueue.length > 0 ? whereResultQueue.shift()! : [];
+    const p = Promise.resolve(next);
     (p as unknown as Record<string, unknown>).orderBy = orderByMock;
     (p as unknown as Record<string, unknown>).limit = vi.fn(async () => []);
     return p;
@@ -56,6 +62,14 @@ vi.mock('../utils/logger.js', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Storage mock — records storage.delete calls so tests can assert that the
+// gdpr purge actually hands every file (mediaUrl + attachments) to storage
+// after the DB transaction commits.
+const storageDeleteMock = vi.fn(async (_filename: string) => undefined);
+vi.mock('./storage.js', () => ({
+  getStorage: () => ({ delete: storageDeleteMock }),
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -138,9 +152,29 @@ function setupPurgeWithTickets(ticketRows: unknown[]) {
   // ratings and messages queries return empty via where() default (Promise.resolve([]))
 }
 
+/**
+ * Set up mocks for a purge that loads tickets WITH ratings + messages.
+ * gdpr.ts issues three `select()` chains in this order:
+ *   1. tickets — `.where(...).orderBy(...)` — `.orderBy` returns the tickets, but
+ *      `.where()` is invoked first and pops the queue (the value is discarded).
+ *   2. ratings — `.where(inArray(...))` — awaited directly, returns queue head.
+ *   3. messages — `.where(inArray(...))` — awaited directly, returns queue head.
+ * So we push a placeholder for the ticket where, then ratings, then messages.
+ */
+function setupPurgeWithMessages(ticketRows: unknown[], ratingRows: unknown[], messageRows: unknown[]) {
+  executeMock.mockResolvedValueOnce({ rows: [{ count: 0 }] });
+  orderByMock.mockResolvedValueOnce(ticketRows);
+  whereResultQueue.push([]); // ticket .where() — discarded, .orderBy is the real source
+  whereResultQueue.push(ratingRows);
+  whereResultQueue.push(messageRows);
+}
+
 describe('runDailyPurge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    whereResultQueue.length = 0;
+    storageDeleteMock.mockReset();
+    storageDeleteMock.mockResolvedValue(undefined);
 
     // Defaults: archive returns 0, chain verification passes
     archiveAuditLogMock.mockResolvedValue(0);
@@ -328,6 +362,127 @@ describe('runDailyPurge', () => {
       expect.objectContaining({ err: expect.any(Error) }),
       '[purge] Error during daily purge'
     );
+  });
+
+  it('hands every uploaded file to storage.delete (mediaUrl + attachments JSONB)', async () => {
+    computeLiveDayStatsMock.mockReturnValue(makeFakeStats());
+    archiveTicketsMock.mockResolvedValue(1);
+
+    setupPurgeWithMessages(
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
+      [],
+      [
+        { id: 'm1', ticketId: 't1', mediaUrl: '/uploads/photo.png', attachments: null },
+        {
+          id: 'm2',
+          ticketId: 't1',
+          mediaUrl: null,
+          attachments: [
+            { url: '/uploads/file-1.pdf' },
+            { url: '/uploads/file-2.zip' },
+          ],
+        },
+      ],
+    );
+
+    const { runDailyPurge } = await import('./gdpr.js');
+    await runDailyPurge();
+
+    const deleted = storageDeleteMock.mock.calls.map((c: unknown[]) => c[0]);
+    expect(deleted).toEqual(['photo.png', 'file-1.pdf', 'file-2.zip']);
+  });
+
+  it('parses legacy stringified attachments JSONB and still deletes their files', async () => {
+    computeLiveDayStatsMock.mockReturnValue(makeFakeStats());
+    archiveTicketsMock.mockResolvedValue(1);
+
+    setupPurgeWithMessages(
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
+      [],
+      [
+        {
+          id: 'm1',
+          ticketId: 't1',
+          mediaUrl: null,
+          attachments: JSON.stringify([{ url: '/uploads/legacy.pdf' }]),
+        },
+      ],
+    );
+
+    const { runDailyPurge } = await import('./gdpr.js');
+    await runDailyPurge();
+
+    expect(storageDeleteMock).toHaveBeenCalledWith('legacy.pdf');
+  });
+
+  it('skips storage.delete when no purgeable messages have files', async () => {
+    computeLiveDayStatsMock.mockReturnValue(makeFakeStats());
+    archiveTicketsMock.mockResolvedValue(1);
+
+    setupPurgeWithMessages(
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
+      [],
+      [
+        { id: 'm1', ticketId: 't1', mediaUrl: null, attachments: null },
+        { id: 'm2', ticketId: 't1', mediaUrl: 'https://external.example/x.png', attachments: null },
+      ],
+    );
+
+    const { runDailyPurge } = await import('./gdpr.js');
+    await runDailyPurge();
+
+    expect(storageDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it('does not abort the purge when storage.delete throws', async () => {
+    const logger = (await import('../utils/logger.js')).default;
+    computeLiveDayStatsMock.mockReturnValue(makeFakeStats());
+    archiveTicketsMock.mockResolvedValue(1);
+
+    storageDeleteMock.mockRejectedValueOnce(new Error('Azure 503'));
+
+    setupPurgeWithMessages(
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
+      [],
+      [{ id: 'm1', ticketId: 't1', mediaUrl: '/uploads/photo.png', attachments: null }],
+    );
+
+    const { runDailyPurge } = await import('./gdpr.js');
+    await expect(runDailyPurge()).resolves.toBeUndefined();
+
+    // Failure was swallowed — purge still logs completion + writes audit row
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('[purge] GDPR purge complete'),
+    );
+  });
+
+  it('calls storage.delete AFTER the DB transaction commits', async () => {
+    computeLiveDayStatsMock.mockReturnValue(makeFakeStats());
+    archiveTicketsMock.mockResolvedValue(1);
+
+    const order: string[] = [];
+    dbMock.transaction.mockImplementationOnce(async (cb: (tx: { execute: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }) => Promise<void>) => {
+      const tx = {
+        execute: vi.fn().mockResolvedValue({ rowCount: 0 }),
+        update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue({ rowCount: 0 }) })) })),
+      };
+      await cb(tx);
+      order.push('tx-commit');
+    });
+    storageDeleteMock.mockImplementationOnce(async (_filename: string) => {
+      order.push('storage-delete');
+    });
+
+    setupPurgeWithMessages(
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
+      [],
+      [{ id: 'm1', ticketId: 't1', mediaUrl: '/uploads/photo.png', attachments: null }],
+    );
+
+    const { runDailyPurge } = await import('./gdpr.js');
+    await runDailyPurge();
+
+    expect(order.indexOf('tx-commit')).toBeLessThan(order.indexOf('storage-delete'));
   });
 
   it('writes audit log entry after successful purge', async () => {

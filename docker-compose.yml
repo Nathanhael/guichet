@@ -30,6 +30,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env}
       - DISABLE_RATE_LIMIT=${DISABLE_RATE_LIMIT:-false}
       - NODE_ENV=development
+      - LOG_PRETTY=true
+      - ENABLE_API_DOCS=true
       - DEBUG=socket.io:*
       - CORS_ORIGIN=http://localhost:5173,http://client:5173,http://localhost:3001,http://lb:80
       - COOKIE_SECURE=false
