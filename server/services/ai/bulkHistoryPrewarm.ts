@@ -114,6 +114,14 @@ export async function prewarmHistoryTranslations(
     if (next) next();
   };
 
+  // `done` flips true the moment the budget timer fires OR all work settles.
+  // Per-msg callbacks check this before mutating `result` so the snapshot we
+  // hand back to the caller cannot be corrupted by an in-flight worker that
+  // finishes after `Promise.race` resolves. The AI call + Redis write still
+  // proceed (intentional — warms the cache for the NEXT join in this lang),
+  // we just don't echo their results back into the post-budget Map.
+  let done = false;
+
   const work = Promise.allSettled(
     targets.map(async (m) => {
       await acquire();
@@ -121,7 +129,7 @@ export async function prewarmHistoryTranslations(
         const text = m.text ?? m.originalText ?? '';
         const cached = await getCachedTranslation(m.id, lang);
         if (cached) {
-          result.set(m.id, cached);
+          if (!done) result.set(m.id, cached);
           return;
         }
         const r = await runAiAction({
@@ -135,8 +143,10 @@ export async function prewarmHistoryTranslations(
         });
         const translated = r.content.trim();
         if (translated) {
+          // Always write to Redis even after budget — late arrivals warm
+          // the cache for subsequent joins to the same lang.
           await setCachedTranslation(m.id, lang, translated);
-          result.set(m.id, translated);
+          if (!done) result.set(m.id, translated);
         }
       } catch {
         // Per-msg fail is silent — client lazy fallback handles it.
@@ -146,22 +156,45 @@ export async function prewarmHistoryTranslations(
     }),
   );
 
-  await Promise.race([work, new Promise<void>((r) => setTimeout(r, budgetMs))]);
+  await Promise.race([
+    work.then(() => { done = true; }),
+    new Promise<void>((r) => setTimeout(() => { done = true; r(); }, budgetMs)),
+  ]);
 
-  if (result.size < targets.length) {
-    // Soft signal so we know when the budget bit. Not an error — by design.
+  // Snapshot before returning so any post-budget worker that races past the
+  // `done` flag check (impossible on V8's single-threaded loop today, but
+  // defensive against future caller patterns that yield mid-iteration over
+  // the returned Map) still cannot corrupt the caller's view.
+  const snapshot = new Map(result);
+
+  if (snapshot.size < targets.length) {
     const { logger } = getAiContext();
-    logger.debug(
-      {
-        partnerId: opts.partnerId,
-        supportLang: lang,
-        prewarmed: result.size,
-        candidates: targets.length,
-        budgetMs,
-      },
-      '[bulkHistoryPrewarm] partial — remainder will fall back to client lazy',
-    );
+    if (snapshot.size === 0) {
+      // Total failure (likely AOAI down or all calls rate-limited) — surface
+      // at warn so on-call sees it without scraping debug logs.
+      logger.warn(
+        {
+          partnerId: opts.partnerId,
+          supportLang: lang,
+          candidates: targets.length,
+          budgetMs,
+        },
+        '[bulkHistoryPrewarm] zero translations completed — provider may be down or rate-limited; client lazy fallback engaged for entire history',
+      );
+    } else {
+      // Partial success (budget bit, or per-msg failures) — debug only.
+      logger.debug(
+        {
+          partnerId: opts.partnerId,
+          supportLang: lang,
+          prewarmed: snapshot.size,
+          candidates: targets.length,
+          budgetMs,
+        },
+        '[bulkHistoryPrewarm] partial — remainder will fall back to client lazy',
+      );
+    }
   }
 
-  return result;
+  return snapshot;
 }
