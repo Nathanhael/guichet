@@ -120,19 +120,20 @@ DATABASE_URL=postgresql://guichet:password@guichet-db.postgres.database.azure.co
 Run migrations on first deploy:
 
 ```bash
-# Local Docker stack
+# Local Docker dev stack (uses drizzle-kit CLI, available in dev container)
 docker compose exec server npm run db:migrate
 
-# Azure Container Apps — exec inside the running server CA
+# Azure Container Apps — exec the compiled migrator inside the prod CA
 az containerapp exec \
   --name ca-guichet-server \
   --resource-group rg-guichet \
-  --command "npm run db:migrate"
+  --command "node dist/db/migrate.js"
 ```
 
-The runtime image ships `drizzle/` (migration SQL + journal) and `drizzle-kit`
-in `dependencies` (not devDependencies), so `npm run db:migrate` works inside
-the prod container without any extra build step.
+The prod runtime image ships only the migration SQL + journal in `drizzle/`.
+The `dist/db/migrate.js` script uses `drizzle-orm`'s built-in `migrate()`
+helper — drizzle-kit (and its ~50 MB esbuild + typescript transitive
+footprint) stays in devDependencies and is never installed in the prod image.
 
 For zero-downtime cutovers, run the migration **before** rolling new server
 revisions when migrations only add nullable columns / new tables. For
