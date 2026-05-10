@@ -55,13 +55,14 @@ AZURE_AD_TENANT_ID=<directory-id>
 AZURE_AD_CLIENT_ID=<application-id>
 AZURE_AD_CLIENT_SECRET=<secret-value>
 AZURE_AD_REDIRECT_URI=https://<your-host>/api/v1/auth/sso/azure/callback
-INTERNAL_EMAIL_DOMAINS=<your-internal-domain>,<other-internal-domain>
 ```
 
-`INTERNAL_EMAIL_DOMAINS` controls the `users.isExternal` flag at SSO callback —
-emails matching these domains are treated as internal staff and skip the
-`destructive_admin` capability gate. Customer/partner employee emails should
-**not** be in this list (they get the GUEST badge + the gate).
+> **`INTERNAL_EMAIL_DOMAINS` is currently vestigial.** The variable is loaded by
+> `config.ts` but **not read** by the SSO callback. The `users.isExternal` flag
+> is driven by Azure token claims (`acct === 1` or `idp` is set → guest), not by
+> email-domain matching. Setting `INTERNAL_EMAIL_DOMAINS` does not flip the
+> `destructive_admin` / `audit_read` capability gates today. Track or remove the
+> var; do not rely on it for B2B classification.
 
 Production hardening (`config.ts` enforces FATAL exits when `NODE_ENV=production`):
 
@@ -76,18 +77,22 @@ Production hardening (`config.ts` enforces FATAL exits when `NODE_ENV=production
 `login.microsoftonline.com` only returns AAAA (IPv6) records by default. The
 default Docker bridge has no IPv6 route, so the server's outbound JWKS /
 token-exchange fetches fail with `ENETUNREACH`. The `docker-compose.yml`
-server service includes:
+server service applies a **two-layer fix** — keep both:
 
 ```yaml
+environment:
+  - NODE_OPTIONS=--dns-result-order=ipv4first
 sysctls:
   - net.ipv6.conf.all.disable_ipv6=1
   - net.ipv6.conf.default.disable_ipv6=1
 ```
 
-This forces the resolver to return only A records inside the container.
-Alternatives: enable IPv6 in the Docker daemon, or ensure outbound IPv6 routing
-on the host. Don't silently drop the sysctls without confirming an alternative
-works.
+`NODE_OPTIONS=--dns-result-order=ipv4first` makes Node prefer A records when
+both are available; the `sysctls` block disables IPv6 inside the container so
+AAAA-only responses fall back to A. Either layer alone has historically been
+flaky. Alternatives: enable IPv6 in the Docker daemon, or ensure outbound IPv6
+routing on the host. Don't silently drop either without confirming the
+alternative works end-to-end.
 
 ### 1.5 Verify the wiring
 
@@ -195,26 +200,30 @@ internal staff.
 
 ### 2.6 Customer admin self-service
 
-B2B guests are blocked from `destructive_admin` mutations
-(`partner.members.add/update/remove/invite`, webhook CRUD/secret rotation,
-partner department + SLA edits). Two options if a partner wants to manage
-their own people without going through the platform op:
+B2B guests are blocked from `destructive_admin` mutations across partner
+config (department + SLA edits), webhooks (CRUD + secret rotation + test),
+labels (CRUD), and canned responses (CRUD). They are also blocked from
+`audit_read` on internal-only admin reads (the admin roster + actor identities
+in audit views). Two options if a partner wants to manage their own people
+without going through the platform op:
 
 1. **Group owner pattern (recommended)** — make the customer's designated admin
    the **owner** of their `Partner-<slug>-*` security groups (Entra → Groups →
    the group → Owners → Add). They can add/remove members in their own groups
    without tenant-admin access. SSO callback picks up the change on the
    member's next login.
-2. **Internal-staff promotion** — invite them as a regular tenant member
-   instead of a guest, add their domain to `INTERNAL_EMAIL_DOMAINS`. They lose
-   the GUEST badge and the gate. Heavyweight; defeats the B2B model. Only
+2. **Internal-staff promotion** — re-invite them as a regular member of our
+   Entra tenant (not a B2B guest). The next SSO login no longer carries
+   `acct === 1` / `idp` claims, `users.isExternal` flips to `false`, and the
+   capability gates fall away. Heavyweight; defeats the B2B model. Only
    appropriate for embedded contractors.
 
 ---
 
 ## 3. Provisioning behavior on every SSO login
 
-What the callback at `routes/sso.ts:419-554` does on each successful login:
+What the callback at `routes/sso.ts:213-633` does on each successful login (the
+auto-membership block specifically lives at `routes/sso.ts:408-554`):
 
 | Step | Action |
 |---|---|
@@ -243,7 +252,7 @@ Implications:
 |---|---|---|
 | `no_matching_groups` | Token had `groupCount: 0` for a user with no internal-staff fallback | Stale Microsoft session — sign out fully (incognito works) and retry. If groups claim genuinely missing, re-check §1.1 step 4 (Token configuration) |
 | `guest_multi_partner_mapping` | Guest's groups resolve to 2+ partners | Reduce their group memberships, or convert to internal staff |
-| `invite_expired` | Pre-invited user didn't claim within the 30-day window | Issue a new invite |
+| `invite_expired` | Pre-invited user didn't claim within the `INVITE_TTL_DAYS` window (currently 7 days, hard-coded in `routes/sso.ts`) | Issue a new invite |
 | `token_exchange_failed` / `token_verification_failed` | App reg secret rotated, expired, or wrong | Issue a new client secret in Entra and update `AZURE_AD_CLIENT_SECRET` |
 | `nonce_mismatch` | Possible token replay; usually benign (browser back-button on the callback URL) | Retry the login |
 | `internal_error` (with server log `fetch failed cause=ENETUNREACH`) | Docker IPv6 / Microsoft AAAA-only DNS | See §1.4 |
@@ -280,6 +289,6 @@ docker compose exec -T db psql -U user -d guichet -c \
 Expected for a normal SSO login:
 
 - `has_oid = t` (Azure OID stamped)
-- `is_external = t` for B2B guests, `f` for `INTERNAL_EMAIL_DOMAINS` matches
+- `is_external = t` for B2B guests (token had `acct === 1` or an `idp` claim), `f` for regular tenant members
 - `m.source = 'sso'` for group-provisioned memberships
 - `m.role` matches the highest-priority group they're in

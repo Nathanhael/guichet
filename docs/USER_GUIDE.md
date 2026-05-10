@@ -1,13 +1,13 @@
-# User Guide: Guichet Platform (Clean Slate)
+# User Guide: Guichet Platform
 
-Welcome to Guichet. This guide explains the core chat functionality, dynamic organizational structure, and the strict monochrome interface.
+Welcome to Guichet. This guide explains the core chat functionality, dynamic organizational structure, and the soft-product interface.
 
 ---
 
 ## 1. Roles & Responsibilities
 
-1.  **Platform Operator**: Global administrator. Manages the Partner ecosystem, infrastructure configuration, global user lifecycle, and system audits.
-2.  **Partner Admin**: Manages organization-specific settings and team members (invite internal/external users, assign departments).
+1.  **Platform Operator**: Global administrator. Manages the Partner ecosystem, infrastructure configuration, and system audits.
+2.  **Partner Admin**: Manages organization-specific settings (departments, business hours, labels, canned responses, AI). Team membership flows in from Azure groups — admins do not invite users from inside Guichet.
 3.  **Support Specialist**: Handles incoming tickets and communicates with agents within their assigned departments.
 4.  **Agent**: Creates tickets and communicates with support.
 
@@ -25,10 +25,6 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 - If you cannot log in, contact your platform operator. They will verify your Azure account is provisioned and that your partner membership is active.
 - If SSO itself is down, platform operators can use the break-glass CLI (`docs/BREAK_GLASS_RUNBOOK.md`) to mint a short-lived JWT for emergency administration.
 
-### Notification Preferences
-- Open the Settings popover (gear icon in the navbar) to toggle in-app notification categories.
-- All notifications are enabled by default (opt-out model).
-
 ---
 
 ### Platform Administration (Global Control)
@@ -42,10 +38,10 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 - Manage Active vs Inactive tenants. Inactive partners block logins and gracefully close open sessions.
 
 ### Users Tab
-- **Onboarding Status**: Track users as **Linked (SSO)** (an Azure OID is stamped on the user) or **Pending** (invited but not yet signed in).
+- **Onboarding Status**: Track users as **Linked (SSO)** (an Azure OID is stamped on the user) or **Pending** (provisioned but not yet signed in).
 - **Activity Monitoring**: The **Last Active** column shows the precise time of each user's last interaction.
 - **Revoke Sessions**: Force sign-out all active sessions (and refresh tokens) for a user.
-- **Global Search & Management**: Edit profiles, manage cross-tenant access, or perform global deletions.
+- **Global Search**: Search users across every tenant from one place. User identity itself is managed in Azure — Guichet shows the SSO-resolved view; create/edit/delete happens in Entra.
 
 ### Health Tab
 - **Live Metrics**: Real-time monitoring of Postgres active connections and Redis memory usage.
@@ -70,18 +66,19 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 
 ## 4. Partner Administration
 
-Partner Admins use the **AdminView** to manage their local workspace:
-- **Team Tab**: Manage users specific to the partner. Invite existing platform users or invite new external users — all invites are SSO-only; the user's first Microsoft sign-in links their Azure OID to the invited row. External (Azure B2B guest) admins show a `GUEST` badge next to their name — they have read access to every admin panel but are blocked from destructive mutations (webhook secrets, department edits, team-member add/remove/update). Have a full-rights admin perform those actions or promote the user internally if that's the intent.
-- **Departments Tab**: Create and update the names and descriptions of support departments.
+Partner Admins use the **AdminView** to manage their local workspace. The default tab list:
+
+- **Dashboard Tab**: Multi-zone partner dashboard — Scorecard (KPIs), Staffing fit (heatmap of agent coverage vs ticket volume), Trends (time-series charts), Department + Staff breakdowns (sortable tables). Onboarding mode runs first if the partner has no traffic yet.
+- **Team Tab**: Read-only roster of partner members, sourced from Azure group mappings. External (Azure B2B guest) admins show a `GUEST` badge — they retain admin reads but are blocked from destructive mutations (webhook CRUD + secret rotation, partner department + SLA edits, label CRUD, canned-response CRUD) and from `audit_read` reads (admin roster details + audit-log actor identities). Have a full-rights admin perform those actions or promote the user internally if that's the intent. Membership add/remove/role-change happens in Azure.
+- **Departments Tab**: Create and update the names and descriptions of support departments. Configure per-department first-response SLA (toggle + threshold minutes + warn%).
 - **Tickets Tab**: Browse and manage all partner tickets.
+- **Archive Tab**: Browse closed-ticket archive entries, with message-count summaries and the partner-scoped audit log.
 - **Business Hours Tab**: Configure operating hours per day. Outside hours, agents see a "business hours" guard and queue position.
 - **Labels Tab**: Create colored labels for ticket categorization.
-- **Canned Responses Tab**: Create, edit, and delete response templates for support agents. Each response has a title, body, optional shortcut key, and optional category.
-- **Knowledge Base Tab**: Create and manage help articles organized by category. Articles are available to support staff for reference.
-- **Webhooks Tab**: Configure webhook endpoints that receive events (ticket created, closed, etc.) with HMAC signature verification. View delivery logs.
-- **Alerts Tab**: Review topic-clustering incident alerts. Acknowledge or resolve active alerts. Alert rules themselves are configured by platform operators; partner admins see and work the resulting alert queue.
-- **Stats Tab**: View partner analytics including ticket volumes, response times, ratings breakdown, and agent workload (Recharts dashboards).
+- **Canned Responses Tab**: Create, edit, and delete response templates for support agents. Each response has a title, body, optional shortcut key, and optional category. With AI translation enabled, canned responses auto-translate to nl/en/fr.
 - **Feedback Tab**: Review in-app user feedback submitted via the feedback modal.
+
+Tabs that have shipped at the backend level but are currently disabled in the AdminView UI (`DISABLED_FEATURES` in `client/src/constants.ts`): **Knowledge Base**, **Webhooks**. The legacy **Alerts** (topic-clustering) and **Stats** tabs were removed entirely — analytics moved into the Dashboard tab.
 
 ---
 
@@ -99,32 +96,34 @@ Support Specialists use the **SupportView** to handle tickets:
 - **Message Edit**: Click the edit icon on your own messages to modify them. Edited messages show an "edited" indicator.
 - **Message Delete**: Click the delete icon to soft-delete a message. Admins can delete any message.
 - **Whisper Mode**: Toggle whisper mode to send internal-only messages visible only to support staff.
-- **Ticket Transfer**: Click the transfer button to hand off a ticket to another online support agent.
-- **Customer Info Panel**: View agent details, reference fields, and past ticket history in the right sidebar.
-- **CSAT Ratings**: When a ticket is closed, agents are auto-prompted to rate their support experience. Support admins can view per-agent satisfaction scores with date filtering in the Stats dashboard.
+- **Ticket Transfer**: Click the transfer button to hand a ticket back to another **department queue** (with an optional whisper note for context). Tickets are not assigned to specific agents — the next available member of the target department picks them up.
+- **Customer Info Panel**: View customer details, reference fields, and past ticket history in the right sidebar.
+- **CSAT Ratings**: When a ticket is closed, customers are auto-prompted to rate their support experience. Support admins can view per-agent satisfaction scores with date filtering in the Satisfaction view.
 
 ### Keyboard Shortcuts
 
 Support Specialists can use high-traffic shortcuts to speed up ticket handling. The **Ctrl+K** nav badge in the top-right doubles as a button to open the command palette, which serves as a live cheat sheet for all bindings.
 
+> Authoritative source: `client/src/hooks/useKeyboardShortcuts.ts`. The Command Palette doubles as a live cheat sheet — open it for the canonical, always-fresh list.
+
 - **Navigation**:
   - `Ctrl+K` or `?` — Open Command Palette
-  - `Ctrl+ArrowDown` / `Ctrl+ArrowUp` — Next/Previous chat tab
-  - `Ctrl+1..9` — Jump directly to chat tab N
-  - `Alt+Left` / `Alt+Right` — Jump to next/previous unread chat tab
+  - `Alt+ArrowUp` / `Alt+ArrowDown` — Previous / Next chat tab
+  - `Alt+1..9` — Jump directly to chat tab N (Ctrl+1..9 deliberately left to the browser)
   - `Ctrl+B` — Toggle Queue Sidebar
   - `Ctrl+F` — Open message search within the active ticket
   - `Esc` — Exit focus mode (when active)
   - `Ctrl+Shift+F` — Toggle focus mode
 - **Actions**:
   - `Ctrl+Enter` — Close current ticket (opens confirmation)
-  - `Alt+T` — Transfer ticket to another agent
+  - `Alt+T` — Transfer ticket to another department
   - `Alt+W` — Close current chat tab
   - `Ctrl+/` — Toggle whisper mode (internal-only messages)
-  - `Ctrl+L` or `Alt+L` — Open label picker
-  - `Ctrl+J` or `Alt+J` — Open canned response picker
-  - `Ctrl+Shift+A` — Toggle AI Copilot sidebar
-  - `Ctrl+.` — Open status picker (Online/Away/Offline)
+  - `Alt+L` — Open label picker (Ctrl+L deliberately left to the browser address bar)
+  - `Alt+J` — Open canned response picker (Ctrl+J deliberately left to browser downloads)
+  - `Alt+M` — Toggle mic dictation
+  - `Ctrl+Shift+C` — Toggle the AI tools side panel
+  - `Ctrl+.` — Open status picker (Online / Away)
   - `/` (when not typing) — Focus the message input
 
 ---
@@ -134,9 +133,9 @@ Support Specialists can use high-traffic shortcuts to speed up ticket handling. 
 AI features are controlled per partner by platform admins (Edit Partner → AI Features toggles). When enabled:
 
 - **Message Improvement**: Click the ✨ sparkle button next to the message input to have AI rewrite your message for clarity. The original text is preserved — click "Revert" to undo. Agents get clarity-focused rewrites; support gets actionable step-by-step rewrites.
-- **Chat Summarization**: Click **"Summarize"** in the chat header to generate a 2-3 sentence summary of the conversation. The summary card appears at the top of the chat. The **AI Copilot Sidebar** (right panel) provides quick context for support staff.
-- **Translation**: Click the translate button on any message bubble to translate it to your preferred language (nl/en/fr). The translation appears below the original text.
-- **Auto-Summarize on Close**: When a ticket is closed, AI automatically generates a summary stored in closing notes. This summary survives GDPR purges in the ticket archive.
+- **Translation**: Click the translate button on any message bubble to translate it to your preferred language (nl/en/fr). The translation appears below the original text. Translations are cached server-side.
+- **Voice Dictation**: Press **Alt+M** (or click the mic icon) to dictate a reply. Audio is sent to Azure OpenAI's transcription endpoint and inserted into the compose area as text.
+- **Canned Response Translation**: With AI on, canned responses auto-translate to nl / en / fr; staff pick from the picker in their preferred language.
 
 ### Collision Detection
 
@@ -146,12 +145,13 @@ When multiple support staff open the same ticket, a banner appears: "👀 Sarah 
 
 ## 6. Accessibility & Performance
 
-### High-Performance Core
-- Strictly black and white with zero animations for maximum responsiveness.
+### Soft Product Interface
+- Indigo accent on calm neutrals (light + dark themes), purposeful motion only — animations respect `prefers-reduced-motion`. Dense layouts; no decorative chrome. Full spec at `docs/SOFT_PRODUCT_DESIGN_SPEC.md`.
 
 ### Specialized Typography
-- **Dyslexic Mode**: Switches to the **Lexend** font family to improve readability.
+- **Dyslexic Mode**: Switches the body font to **Lexend** and relaxes line-height to improve readability.
 - **Bionic Reading**: Highlights fixation points to help process text faster.
 
-### Theme Inversion
-- Toggle **Dark Mode** to invert the B&W palette for low-light environments.
+### Theme & Accessibility Modes
+- **Dark Mode**: Full token swap — both themes are first-class.
+- **Monochrome Mode**: Collapses the indigo accent to ink; hierarchy carries via border + shadow + weight (useful for color-vision differences).

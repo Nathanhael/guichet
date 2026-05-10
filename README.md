@@ -9,13 +9,13 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **Soft Product Design System** — CSS custom property token UI (indigo accent, soft neutrals), Inter default with JetBrains Mono scoped to code/IDs, calm purposeful motion, full light/dark parity
 - **Role-Based Access** — Four roles (agent, support, admin, platform_operator) with granular permission gates
 - **SSO-Only Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/TENANT_IDENTITY_SPEC.md`). No passwords, no MFA. Emergency access via the break-glass CLI (`server/scripts/break_glass.ts`).
-- **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructiveAdminProcedure` tRPC middleware.
-- **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser
-- **AI-Powered Support** — Message improvement, chat summarization, translation (nl/en/fr), and auto-summarize on close (Azure OpenAI)
-- **Security Hardening** — WORM audit archive (SHA-256 hash chain), session revocation, rotating refresh tokens with reuse detection, HttpOnly cookie auth, field-level encryption at rest for SMTP / mail-provider credentials
-- **Audit Observability** — Chain-integrity verify UI with server-persisted history + CSV export for compliance attestation, multi-axis filtering (targetType / targetId / actor / date / partner), metadata drawer with diff view, cross-partner activity rollup, per-ticket audit drawer, chain-broken webhook side-channel. Alertmanager rules for tamper / staleness / silent emitters / GDPR purge misses. Runbook at `docs/AUDIT_RUNBOOK.md`.
-- **Invite Flow** — Admin / support / agent invitable via SSO-provisioned flow (no passwords, no invite email). Pending-invite worklist with Revoke action; 30-day claim window; abandoned-invite purge; guest-removal revokes sessions + refresh tokens immediately.
-- **GDPR Compliance** — 30-day retention purge with automatic archival, daily stats aggregation, and notification preferences. Purge observability via `guichet_gdpr_purge_runs_total{outcome}` and `guichet_gdpr_rows_purged_total{scope}`; aborts if the audit chain fails verification (fail-closed).
+- **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructive_admin` capability check resolved inline through `services/auth/capabilities.ts`.
+- **Platform Cockpit** — Global operator view for tenant management, audit log, archive browser, and chain-verify history
+- **AI-Powered Support** — Message improvement, translation (nl/en/fr), and voice transcription (Azure OpenAI; OpenAI-compatible providers also supported). Per-partner audit verbosity + PII redaction before prompts leave the server.
+- **Security Hardening** — WORM audit archive (SHA-256 hash chain), session revocation, rotating refresh tokens with reuse detection, HttpOnly cookie auth, field-level AES-GCM encryption at rest for AI provider keys and webhook signing secrets
+- **Audit Observability** — Chain-integrity verify UI with server-persisted history + CSV export for compliance attestation, multi-axis filtering (targetType / targetId / actor / date / partner), metadata drawer with diff view, cross-partner activity rollup, per-ticket audit drawer, chain-broken webhook side-channel. In-app Health-page tripwires for tamper / staleness / SLA-breach burst / GDPR purge misses. Runbook at `docs/AUDIT_RUNBOOK.md`.
+- **Identity Provisioning** — Users surface automatically when an Azure SSO callback resolves them to a partner via group mappings. No passwords, no invite email. Removing a guest user from a partner revokes their sessions + refresh tokens immediately.
+- **GDPR Compliance** — 30-day retention purge with automatic archival and daily stats aggregation. Aborts if the audit chain fails verification (fail-closed). Purge events recorded in `audit_log`.
 - **Canned Responses** — Per-partner templates with shortcut keys and `/` picker in chat
 - **Customer Satisfaction** — Auto-prompted ratings on ticket close, follow-up reminders, per-agent CSAT reporting
 
@@ -26,7 +26,7 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 | Frontend | React 19, Vite 8, Tailwind CSS 4, Zustand 5 |
 | Backend | Node.js 24 (ESM), Express 5, tRPC 11, Socket.io 4 |
 | Database | PostgreSQL 18, Redis 8, Drizzle ORM |
-| Observability | Prometheus, Grafana, Pino structured logging |
+| Observability | Pino structured logging, in-app Health page tripwires |
 | Runtime | Docker & Docker Compose |
 
 ## Quick Start
@@ -38,7 +38,7 @@ cp .env.example .env
 # 2. Start development
 docker compose up
 
-# 3. Clean database (truncate tables)
+# 3. Reset database (truncates all tables, then seeds a single dev tenant + users)
 docker compose exec server npx tsx seed.ts
 ```
 
@@ -78,11 +78,13 @@ powershell -File scripts/ci.ps1
 
 ## Database Management
 
+These scripts live in `server/package.json`. Run them via Docker (or from inside `server/`):
+
 ```bash
-npm run db:migrate              # Apply pending migrations
-npm run db:baseline             # Seed Drizzle ledger on existing DB (one-time)
-npm run db:backup               # Backup to server/backups/ (gzipped, keeps last 10)
-npm run db:backup:docker        # Same, from Docker container
+docker compose exec server npm run db:migrate         # Apply pending migrations
+docker compose exec server npm run db:baseline        # Seed Drizzle ledger on existing DB (one-time)
+docker compose exec server npm run db:backup          # Backup to server/backups/ (gzipped, keeps last 10)
+docker compose exec server npm run db:backup:docker   # Same, from Docker container
 ```
 
 ## API Documentation
@@ -96,13 +98,13 @@ npm run db:backup:docker        # Same, from Docker container
 guichet/
 ├── server/          # Express + tRPC + Socket.io
 │   ├── db/          # Drizzle ORM schema + connection
-│   ├── trpc/        # tRPC router + domain routers
+│   ├── trpc/        # tRPC router + 19 domain routers
 │   ├── socket/      # Real-time event handlers
-│   ├── services/    # Business logic (AI, GDPR, archive, guards, mail)
-│   └── middleware/   # Auth, validation
+│   ├── services/    # Business logic — auth/, ai/, availability/, dashboard/, messageLifecycle/, ticketLifecycle/, moderator/, archive, gdpr, etc.
+│   └── middleware/  # Auth, validation, upload-proxy
 ├── client/          # React + Vite + Tailwind
 │   └── src/
-│       ├── components/   # UI components by domain
+│       ├── components/   # ui/ primitives + per-view feature folders
 │       ├── views/        # Page views (Platform, Admin, Support, Agent, Login)
 │       ├── store/        # Zustand slices
 │       └── hooks/        # Socket, i18n, store hooks

@@ -10,8 +10,7 @@ Treat this as the first document to open when:
 - The Health page in PlatformView shows a red `Audit chain integrity broken` banner (or the live `audit:chain:broken` socket toast pops)
 - The Health page shows the amber `Audit chain has not been verified in over 25 hours` banner
 - The Health page shows `GDPR purge failed` / `GDPR purge overdue` banners
-- The chain-broken webhook fired (configured in `partner.webhooks`)
-- A tenant admin reports the partner verify button erroring out
+- The chain-broken webhook fired (configured via the `webhook.*` tRPC router / Webhooks admin panel)
 - An auditor asks for chain-integrity attestation evidence
 - The audit drawer renders empty for tickets that should have lifecycle rows
 
@@ -129,7 +128,7 @@ This means the verify itself couldn't run — a db read timeout, a Redis
 outage blocking the rate limiter, or the archive store being unreachable.
 It is NOT a tamper signal.
 
-1. Check `[chainVerify]` logs for the wrapped error message.
+1. Check `[chain-verify]` logs for the wrapped error message.
 2. Check db / Redis / storage health for the same window.
 3. Fix the infra problem.
 4. Manually re-run verify via System Health to clear the staleness banner.
@@ -151,9 +150,9 @@ The ticket lifecycle counter went from nonzero to zero without a
 corresponding drop in ticket traffic. Likely causes:
 
 1. A recent deploy broke the lifecycle factory wiring in `server/app.ts`
-   (`createTicketLifecycle({ db })`) or stopped passing `lifecycle` into
-   `HandlerContext` — the socket handlers would still respond but no
-   verb would actually run.
+   (`createTicketLifecycle({ db, ports: { moderation: moderationAdapter() } })`)
+   or stopped passing `lifecycle` into `HandlerContext` — the socket handlers
+   would still respond but no verb would actually run.
 2. `tx.insert(auditLog)` is failing inside the lifecycle transaction. Unlike
    the pre-deepening emitter (which was fire-and-forget), this aborts the
    whole transition — search logs for transaction-rollback errors and for
@@ -178,15 +177,17 @@ Triggered by: amber `GDPR purge overdue` banner on the Health page (last
 
 ### GDPR purge overdue (no recent run)
 
-1. Check `[purge]` logs for the last arming message (`Purge scheduled with
-   jitter`) — this logs on every boot.
+1. Check `[GDPR]` logs for the last arming message (`Purge scheduled with
+   jitter`) — this logs on every boot from the scheduler in `server/app.ts`.
+   Once the timer fires, runtime logs from the purge itself use the `[purge]`
+   prefix.
 2. If the scheduler never armed, the server likely crashed during boot
    before reaching `runDailyPurge` registration.
 3. If the scheduler armed but never fired, the server process was killed
    before the 24h timer could tick — check for OOM / crash loop.
 4. Once the server is stable, the scheduler will arm on next boot. To
-   catch up, manually trigger the purge via the platform admin tools
-   (`trpc.platform.runPurge`).
+   catch up, manually trigger the purge from a server shell via the
+   operator script: `docker compose exec server npx tsx server/scripts/test_gdpr_purge.ts`.
 
 ### GDPR purge aborted by chain failure
 
@@ -211,8 +212,8 @@ the chain was broken AND the purge has refused to run as a precaution.
 | `tickets` (open/pending) | Never purged while live | `server/services/gdpr.ts` (skipped) |
 | `tickets` (closed) + `messages` | `GDPR_RETENTION_DAYS` (default 30d) | `server/services/gdpr.ts` |
 | `ai_usage_log` | `GDPR_RETENTION_DAYS` (rolled up to `daily_ai_usage` first) | `server/services/gdpr.ts` |
-| `rating.comment` | `RATING_COMMENT_RETENTION_DAYS` (default 30d) — nullified, row kept | `server/services/gdpr.ts` |
-| Abandoned invites | 7d from creation | `server/services/gdpr.ts::purgeAbandonedInvites` |
+| `rating.comment` | `RATINGS_COMMENT_RETENTION_DAYS` (default 30d) — nullified, row kept | `server/services/gdpr.ts` |
+| Abandoned invites | 30d from creation | `server/services/gdpr.ts::purgeAbandonedInvites` |
 | Chain verify history | Last 50 runs | `server/services/chainVerifySchedule.ts` |
 | Agent status log | 30d (rolled up to `daily_agent_status`) | `CLAUDE.md` retention notes |
 
@@ -222,14 +223,20 @@ the chain was broken AND the purge has refused to run as a precaution.
 
 | Invariant | Test file |
 |---|---|
-| Shared runner persistence shape (latest + history) | `server/services/__tests__/chainVerifySchedule.test.ts` |
-| Scheduler uses synthetic actor and marks `metadata.scheduled=true` | `server/services/__tests__/chainVerifySchedule.test.ts` |
-| Partner verify passes partnerId; returns scoped slice; nulls brokenAt cross-tenant | `server/trpc/routers/__tests__/partnerVerifyChain.test.ts` |
-| Partner verify rate limit is per-(partner+user) and fails open | `server/trpc/routers/__tests__/partnerVerifyChain.test.ts` |
+| Shared runner persistence shape (latest + history) | `server/services/chainVerifySchedule.test.ts` |
+| Scheduler uses synthetic actor and marks `metadata.scheduled=true` | `server/services/chainVerifySchedule.test.ts` |
+| Verify rate limit is per-(partner+user) and fails open | `server/trpc/routers/__tests__/verifyAuditChainRateLimit.test.ts` |
+| Partner-scoped audit reads honour the `audit_read` capability | `server/trpc/routers/partner.audit.guestGating.test.ts` |
+| Archive write + chain hashing | `server/services/archive.test.ts` |
 | Ticket emitter increments metric before db.insert (ordering invariant) | `server/services/ticketLifecycle/audit.ts` (asserted indirectly by every lifecycle verb test — the metric tick is the first line of `writeAudit`) |
 | Audit write rolls back the whole lifecycle event on FK violation | `server/services/ticketLifecycle/{reclaim,leave,returnToQueue,assign,transfer,close,create}.test.ts` (each suite has a "transactional rollback" boundary case) |
 | `ticket.left` and `ticket.reclaimed` audit rows land for every leave / reclaim | `server/services/ticketLifecycle/{leave,reclaim}.test.ts` (audit-invariant assertion in the happy path + the "secondary leaves" case for `ticket.left`) |
 | Audit drawer opens from TicketPreview and fires getForTicket | `testing/e2e/admin-ticket-audit-drawer.spec.ts` |
+
+> **Verify endpoint scope.** Chain verify is platform-operator-only
+> (`platform.verifyAuditChain`). There is no separate tenant-admin verify
+> mutation today. Partner-scoped audit views surface the *result* of the
+> latest verify, but the trigger is operator-side.
 
 If any of these tests need to be weakened, assume the invariant itself is
 being relaxed and cross-check this runbook before merging.
