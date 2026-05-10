@@ -13,6 +13,10 @@ export async function initRedis() {
   if (!pubClient) {
     pubClient = createClient({
       url: config.REDIS_URL,
+      // pingInterval keeps the connection warm against Azure Cache for Redis's
+      // 10-min idle close (Basic/Standard tier default = 600s). 4-min beats
+      // the timer with margin without flooding the cache with pings.
+      pingInterval: 240_000,
       socket: {
         reconnectStrategy(retries: number) {
           const delay = Math.min(retries * 50, 3000);
