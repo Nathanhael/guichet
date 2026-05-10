@@ -43,6 +43,45 @@ fail-closed at server boot.
 | `INTERNAL_EMAIL_DOMAINS` | optional | CSV of staff email domains. Anyone outside is `isExternal=true` (B2B guest model). |
 | `AI_ENABLED` | optional | Default `false`. If you turn it on you must also set `AI_PROVIDER`, `AI_BASE_URL`, `AI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, and the encryption key above. |
 
+### AOAI quota requests (T-7 days, parallel to image builds)
+
+Quota allocations on the trial sub do NOT carry over to the prod sub —
+each AOAI resource starts with restrictive defaults. Request these the
+moment the prod sub is provisioned so approval (5-7 days for mini-tier)
+lands before launch:
+
+- [ ] `gpt-4o` — `Standard` 50K TPM in chosen region. Current production
+      model per A/B sweep 2026-05-10 (`runAction.ts` top-of-file). Backup
+      capacity for hard-fail-safe.
+- [ ] `gpt-4o` — `GlobalStandard` 200K TPM. Real-traffic capacity. Often
+      easier to get than Standard in the same volume.
+- [ ] `gpt-4.1-mini` — `Standard` AND `GlobalStandard` 50K TPM each. Same
+      region. **Why**: 4.1-mini is the non-reasoning successor to deprecated
+      `gpt-4o-mini` and projects to ~6× cheaper than gpt-4o at comparable
+      quality. Trial sub had Batch quota only (unusable for live chat);
+      prod sub typically opens Standard. Migrate when approved + verified
+      via 20-case A/B against gpt-4o (matches the 2026-05-10 methodology).
+- [ ] `whisper` — `Standard` 15 RPM in chosen region. Trial defaulted to
+      ~1 RPM which throttled voice transcription under realistic load
+      (memory `azure_openai_deployment.md`, ~5000 tickets/month → 1.7 RPM
+      sustained, peak <15).
+- [ ] Skip GPT-5 family entirely. A/B verdict 2026-05-10: reasoning_tokens
+      dominate billing, no cost-quality advantage over gpt-4o for transform
+      tasks. Re-evaluate only if OpenAI ships a new non-reasoning mini.
+
+Request via Azure portal: Cognitive Services → resource → Quotas →
+Request Increase. Justification text: "Production launch of multi-tenant
+live chat support platform; per-call cost modelling and quality A/B
+results in `runAction.ts` top-of-file; expected steady-state load ~30k
+chats/month."
+
+Monitor approval via:
+
+```powershell
+az cognitiveservices usage list -l <region> `
+  --query "[?contains(name.value, 'gpt-4o') || contains(name.value, 'gpt-4.1-mini')].{model:name.value, used:currentValue, limit:limit}" -o table
+```
+
 ### Migration strategy
 
 Two paths — pick one **before** you build images:
