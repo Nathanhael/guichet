@@ -75,6 +75,51 @@ live chat support platform; per-call cost modelling and quality A/B
 results in `runAction.ts` top-of-file; expected steady-state load ~30k
 chats/month."
 
+### Client → Static Web Apps Free migration (T-7 days, requires custom domain)
+
+Trial deployment runs the client as a Container App (`ca-guichet-client`)
+which costs ~€12/month for a process whose only job is to serve the Vite
+SPA bundle + reverse-proxy `/api/`, `/uploads/`, `/socket.io/` to the
+server via nginx (`client/nginx.conf`). Static Web Apps Free tier hosts
+the same bundle from a global CDN at €0/month with managed TLS.
+
+**Why deferred from trial:** SWA Free tier does NOT support routing
+to an external Container App backend — that requires SWA Standard
+(~€8/month, eats most of the savings). Without it, the browser would
+need to make cross-origin calls to the server domain — meaning the
+JWT auth cookie must flip from `SameSite=Lax` to `SameSite=None;
+Secure` and CORS must allowlist the SWA origin. That cookie change
+is the kind of subtle thing that works in trial and surfaces a rare
+auth bug in prod under load. Don't take that risk while pre-prod.
+
+**The clean prod approach: custom domain + same-site cookies.** When
+you have a real domain (`example.com`):
+
+- SWA at `app.example.com` (or `www.`) — serves the static SPA
+- Container App at `api.example.com` — serves the API
+- Both share the registrable domain `example.com` → the auth cookie
+  with `Domain=.example.com; SameSite=Lax` works for both transparently
+- No cross-origin cookie complications, no server-side `SameSite=None`
+  flip, no CORS surface widening
+
+Steps when prod sub is provisioned and custom domain is registered:
+
+- [ ] Create SWA: `az staticwebapp create -n swa-guichet-client -g <prod-rg> -l westeurope --sku Free --source https://github.com/Nathanhael/guichet --branch main --app-location "client" --output-location "dist" --token <gh-pat>`
+- [ ] Add custom domain `app.example.com` to SWA + DNS CNAME
+- [ ] Add custom domain `api.example.com` to Container App + DNS CNAME
+- [ ] Update server `COOKIE_DOMAIN=.example.com` env var
+- [ ] Update server `CORS_ORIGIN=https://app.example.com`
+- [ ] Update `FRONTEND_URL=https://app.example.com`
+- [ ] Verify dev-login + Azure SSO + ticket flow work via SWA URL
+- [ ] Cleanup: delete `ca-guichet-client` Container App + `guichet-client` ACR repo
+- [ ] Saving: ~€12/month (~€144/year)
+
+The auto-generated GitHub Actions workflow at `.github/workflows/azure-static-web-apps-*.yml`
+will build from `client/` and deploy on every push to `main`. Build
+needs `server/trpc/router` types in scope (already in `client/tsconfig.json`
+include array — works because the GH Actions checkout includes the whole
+repo); no special handling required.
+
 Monitor approval via:
 
 ```powershell
