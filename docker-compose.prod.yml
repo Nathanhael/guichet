@@ -1,7 +1,18 @@
+# Default log driver config — caps json-file growth so a chatty service
+# can't fill the host disk. Azure Container Apps ignores this and routes
+# stdout to Log Analytics directly; the cap only matters for the local
+# docker-compose prod stack.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:18-alpine
     restart: always
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -23,6 +34,7 @@ services:
       context: ./server
       dockerfile: Dockerfile.prod
     restart: always
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -48,9 +60,11 @@ services:
       - AI_BASE_URL=${AI_BASE_URL:-}
       - AI_API_KEY=${AI_API_KEY:-}
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
-      # Field encryption key — REQUIRED. encryption.ts reads FIELD_ENCRYPTION_SECRET preferentially.
-      # AI_KEY_ENCRYPTION_SECRET kept as a legacy alias; one of the two must be set.
-      - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:?FIELD_ENCRYPTION_SECRET must be set in .env (generate with: node -e "console.log(require(\"crypto\").randomBytes(32).toString(\"hex\"))")}
+      # Field encryption key — REQUIRED when AI_ENABLED=true (server FATALs at boot).
+      # encryption.ts reads FIELD_ENCRYPTION_SECRET preferentially; AI_KEY_ENCRYPTION_SECRET
+      # is kept as a legacy alias and one of the two must be set.
+      # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - "FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:?must be set in .env (see docs/AZURE_DEPLOYMENT.md)}"
       - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -70,6 +84,7 @@ services:
   redis:
     image: redis:8-alpine
     restart: always
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -91,6 +106,7 @@ services:
       context: .
       dockerfile: client/Dockerfile.prod
     restart: always
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -104,6 +120,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: always
+    logging: *default-logging
     deploy:
       resources:
         limits:

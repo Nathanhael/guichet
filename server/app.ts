@@ -35,7 +35,7 @@ import { registerSocketHandlers } from './socket/handlers.js';
 import { createTaskRunner } from './utils/taskRunner.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
-import { initAiContext } from './services/ai/index.js';
+import { initAiContext, runAiBootHealthCheck } from './services/ai/index.js';
 import { Moderator } from './services/moderator/index.js';
 import { setModerator } from './services/moderator/instance.js';
 import { RedisRepetition } from './services/moderator/repetition.js';
@@ -139,6 +139,11 @@ initRedis().then(({ pubClient, subClient }) => {
     },
   });
   logger.info('AI context initialized');
+
+  // Fire-and-forget probe: surfaces stale API keys (e.g. rotated AOAI keys
+  // not synced to the Container App secret) in logs at boot, instead of
+  // letting silent fallbacks hide the breakage until first user-facing call.
+  void runAiBootHealthCheck();
 
   // Initialize Moderator. Mirrors initAiContext: constructed after Redis
   // is ready so RedisRepetition gets the live pubClient. No consumers

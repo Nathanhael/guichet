@@ -25,5 +25,6 @@ export { getPartnerAiConfig, isFeatureEnabled } from './config.js';
 export { getCachedTranslation, setCachedTranslation, invalidateTranslation } from './translateCache.js';
 export { formatMessagesForAi } from './messageFormatter.js';
 export { runAiAction } from './runAction.js';
+export { runAiBootHealthCheck } from './bootHealthCheck.js';
 export type { AiSchema } from './context.js';
 export { initAiContext, getAiContext } from './context.js';

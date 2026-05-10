@@ -14,11 +14,6 @@
 		reverse_proxy server:3001
 	}
 
-	# Prometheus metrics → server container (internal only)
-	handle /metrics {
-		reverse_proxy server:3001
-	}
-
 	# Everything else → client container (SPA)
 	handle {
 		reverse_proxy client:8080
