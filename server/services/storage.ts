@@ -17,6 +17,13 @@ export interface StorageBackend {
   read(filename: string): Promise<Buffer>;
   /** Check if the backend is healthy. */
   healthy(): Promise<boolean>;
+  /**
+   * List all stored files with their last-modified timestamps.
+   * Used by the orphan-blob reaper to find uploads that were never
+   * referenced by a message (e.g. user closed compose without sending).
+   * Hidden / dotfile entries (e.g. `.gitkeep`) are filtered out.
+   */
+  list(): Promise<Array<{ name: string; lastModifiedMs: number }>>;
 }
 
 /** Reject filenames with traversal sequences or unsafe characters. */
@@ -79,6 +86,23 @@ class LocalStorage implements StorageBackend {
 
   async healthy(): Promise<boolean> {
     return fs.existsSync(LOCAL_UPLOAD_DIR);
+  }
+
+  async list(): Promise<Array<{ name: string; lastModifiedMs: number }>> {
+    if (!fs.existsSync(LOCAL_UPLOAD_DIR)) return [];
+    const entries = await fs.promises.readdir(LOCAL_UPLOAD_DIR);
+    const out: Array<{ name: string; lastModifiedMs: number }> = [];
+    for (const name of entries) {
+      // Skip dotfiles (.gitkeep, .DS_Store) — never user-uploaded
+      if (name.startsWith('.')) continue;
+      try {
+        const stat = await fs.promises.stat(path.join(LOCAL_UPLOAD_DIR, name));
+        if (stat.isFile()) out.push({ name, lastModifiedMs: stat.mtimeMs });
+      } catch {
+        // Race: file deleted between readdir and stat — just skip
+      }
+    }
+    return out;
   }
 }
 
@@ -151,6 +175,19 @@ class AzureBlobStorage implements StorageBackend {
     } catch {
       return false;
     }
+  }
+
+  async list(): Promise<Array<{ name: string; lastModifiedMs: number }>> {
+    const container = await this.getContainer();
+    const out: Array<{ name: string; lastModifiedMs: number }> = [];
+    for await (const blob of container.listBlobsFlat()) {
+      // Defensive: skip dotfile-style names if any ever appear
+      if (blob.name.startsWith('.')) continue;
+      const lastModified = blob.properties.lastModified;
+      const lastModifiedMs = lastModified ? lastModified.getTime() : 0;
+      out.push({ name: blob.name, lastModifiedMs });
+    }
+    return out;
   }
 }
 

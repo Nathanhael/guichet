@@ -230,6 +230,18 @@ export async function runDailyPurge() {
       logger.info({ filesDeleted: filesToDelete.length }, '[purge] Cleaned up uploaded files from purged messages');
     }
 
+    // Sweep abandoned uploads — blobs that were uploaded via /api/v1/uploads
+    // but never attached to a message (user closed compose without sending).
+    // The message-driven cleanup above wouldn't reach them; this is the
+    // schema-less reaper. Default grace = 24h so an in-progress compose
+    // session never gets its draft attachment yanked from underneath it.
+    try {
+      const { reapOrphanUploads } = await import('./orphanReaper.js');
+      await reapOrphanUploads();
+    } catch (err) {
+      logger.error({ err }, '[purge] Orphan upload reaper failed (non-fatal)');
+    }
+
     // Step 3: Aggregate and purge old AI usage logs (separate retention window)
     const aiPurged = await aggregateAndPurgeAiUsage();
     if (aiPurged > 0) {
