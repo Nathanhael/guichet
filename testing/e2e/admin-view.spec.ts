@@ -21,11 +21,16 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('dashboard loads with stat cards', async ({ page }) => {
-    // Admin dashboard should show stat cards
-    await page.waitForTimeout(2000);
-    // Dashboard should at minimum render without errors
-    const errorVisible = await page.getByText(/error|crash|500/i).first().isVisible().catch(() => false);
-    expect(errorVisible).toBeFalsy();
+    // Assert positively: the Scorecard zone must render with all three cards
+    // (SLA / CSAT / Volume). The previous "no error/crash/500 text anywhere"
+    // check was a false-positive farm — `/500/i` matched the today-vs-typical
+    // hourly strip whose concatenated 24-cell text contains substrings like
+    // ".50000000" when most slots show 0.5 tickets.
+    const scorecard = page.getByRole('region', { name: 'Scorecard' });
+    await expect(scorecard).toBeVisible({ timeout: 10_000 });
+    await expect(scorecard.getByRole('group', { name: 'SLA' })).toBeVisible();
+    await expect(scorecard.getByRole('group', { name: 'CSAT' })).toBeVisible();
+    await expect(scorecard.getByRole('group', { name: 'Volume' })).toBeVisible();
   });
 
   test('sidebar navigation works', async ({ page }) => {
@@ -44,7 +49,7 @@ test.describe('Admin Dashboard', () => {
     // Look for the team satisfaction section
     const teamSection = page.getByText(/team satisfaction|staff rating/i).first();
     // May or may not be visible depending on available data
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/\b(error|crash)\b/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
 
@@ -56,7 +61,7 @@ test.describe('Admin Dashboard', () => {
       await dateBtn.click();
       await page.waitForTimeout(1000);
       // Dashboard should update without errors
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+      const errorVisible = await page.getByText(/\b(error|crash)\b/i).first().isVisible().catch(() => false);
       expect(errorVisible).toBeFalsy();
     }
   });
@@ -70,7 +75,7 @@ test.describe('Admin - Responsive Layout', () => {
     await page.waitForTimeout(3000);
 
     // Page should render without horizontal scroll issues
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/\b(error|crash)\b/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
 
     // The sidebar should be hidden or collapsed on mobile

@@ -48,6 +48,13 @@ vi.mock('../../../utils/trpc', () => ({
     useUtils: () => ({
       cannedResponse: { list: { invalidate: vi.fn() } },
     }),
+    user: {
+      me: {
+        // useIsExternalAdmin polls this; supply a non-external default so the
+        // hook resolves to false and the destructive-admin gate stays open.
+        useQuery: () => ({ data: { isExternal: false }, isLoading: false, error: null }),
+      },
+    },
     partner: {
       getAiConfig: {
         useQuery: () => ({ data: h.aiConfigData, isLoading: false }),
@@ -101,11 +108,21 @@ vi.mock('../../../utils/trpc', () => ({
   },
 }));
 
-vi.mock('../../../store/useStore', () => ({
-  useStoreShallow: (
-    selector: (s: { bionicReading: boolean; user: { lang: string } | null }) => unknown,
-  ) => selector({ bionicReading: false, user: { lang: 'en' } }),
-}));
+vi.mock('../../../store/useStore', () => {
+  // Mock state covers all keys read by the component tree:
+  // - useStoreShallow in AdminCannedResponses itself (bionicReading, user)
+  // - useStore default in BionicText (selectedLang)
+  // - useStore default in useIsExternalAdmin (user.isExternal)
+  const state = {
+    bionicReading: false,
+    user: { lang: 'en', isExternal: false },
+    selectedLang: 'en',
+  };
+  return {
+    default: (selector: (s: typeof state) => unknown) => selector(state),
+    useStoreShallow: (selector: (s: typeof state) => unknown) => selector(state),
+  };
+});
 
 vi.mock('../../../hooks/usePartner', () => ({
   usePartner: () => ({ manifest: { departments: [] } }),

@@ -39,14 +39,17 @@ async function enableAiFeatures(page: Page) {
 
   if (!loginData.ok) return false;
 
-  // Enable AI on the guichet-main partner via tRPC
+  // Enable AI on the seeded partner ('acme', see PARTNER_ID in server/seed.ts)
+  // — the previous 'guichet-main' id silently 404'd because the partner was
+  // renamed without updating this helper, leaving AI off for the rest of the
+  // suite (improve-button assertion downstream then never fires).
   const updateData = await page.evaluate(async () => {
     const res = await fetch('/api/v1/trpc/platform.updatePartner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        id: 'guichet-main',
+        id: 'acme',
         data: {
           aiEnabled: true,
           aiFeatures: {
@@ -212,6 +215,20 @@ test.describe('Sprint 1: AI Message Improvement', () => {
   });
 
   test('improve button appears when typing long text (agent)', async ({ page }) => {
+    // ComposeArea gates the improve button on `aiHealth.available` from
+    // tRPC `ai.healthCheck`, which probes the real provider. Dev/CI has no
+    // provider configured, so we stub the health endpoint to true — that's
+    // the contract this UI assertion actually depends on.
+    await page.route('**/api/v1/trpc/ai.healthCheck**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: { data: { available: true, lastChecked: new Date().toISOString() } },
+        }),
+      }),
+    );
+
     const res = await loginAsDemo(page, 'agent_julie');
     if (!res.ok) {
       throw new Error(
@@ -236,14 +253,17 @@ test.describe('Sprint 1: AI Message Improvement', () => {
     await page.keyboard.type('This is a message that should trigger the improve button to appear');
     await page.waitForTimeout(500);
 
-    // Look for the improve button (aria-label="Improve message")
-    const improveBtn = page.locator('button[aria-label="Improve message"]');
-    // May or may not be visible depending on AI config
-    await improveBtn.isVisible().catch(() => false);
-
-    // Verify no crashes
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-    expect(errorVisible).toBeFalsy();
+    // beforeEach enabled AI for this partner + we stubbed health check above —
+    // the improve button must now appear once the text crosses the >=10 char
+    // threshold. agent_julie has lang='fr' in the seed, so match either the
+    // English ("Improve message") or French ("Améliorer le message") aria-label.
+    // Asserting positively matches the test name (the previous "no error/crash
+    // text on page" smoke check was a false-positive farm: the queue sidebar
+    // shows seeded ticket titles like "Error Code 5555…" which trip a naive regex).
+    const improveBtn = page.getByRole('button', {
+      name: /^(Improve message|Améliorer le message|Bericht verbeteren)$/,
+    });
+    await expect(improveBtn).toBeVisible({ timeout: 5000 });
   });
 
   test('improve button hidden with short text', async ({ page }) => {
@@ -358,7 +378,7 @@ test.describe('Sprint 2: AI Translation', () => {
     // messages from a different language user
 
     // Verify no crashes
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/\b(error|crash)\b/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
 
