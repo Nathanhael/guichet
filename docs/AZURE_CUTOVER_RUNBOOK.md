@@ -45,35 +45,56 @@ fail-closed at server boot.
 
 ### AOAI quota requests (T-7 days, parallel to image builds)
 
+**Region target: `francecentral`.** Trial put AOAI in `swedencentral`
+because that was the only EU region with gpt-5-family quota at the time;
+9 of 10 trial resources are already in `francecentral`. User base is
+Belgium + Morocco — France Central is the dichtbijste EU DC for both
+(MA latency to FR ~25-35ms vs ~60-70ms to Sweden). Consolidating to
+one region also cuts the cross-region hop on every AI call (~20-30ms
+overhead today).
+
 Quota allocations on the trial sub do NOT carry over to the prod sub —
 each AOAI resource starts with restrictive defaults. Request these the
 moment the prod sub is provisioned so approval (5-7 days for mini-tier)
 lands before launch:
 
-- [ ] `gpt-4o` — `Standard` 50K TPM in chosen region. Current production
+- [ ] Create new AOAI resource `oai-guichet-prod-brk` (or similar) in
+      `francecentral`. Same Cognitive Services account type as trial,
+      but in the prod sub + region.
+- [ ] `gpt-4o` — `Standard` 50K TPM in `francecentral`. Current production
       model per A/B sweep 2026-05-10 (`runAction.ts` top-of-file). Backup
       capacity for hard-fail-safe.
 - [ ] `gpt-4o` — `GlobalStandard` 200K TPM. Real-traffic capacity. Often
       easier to get than Standard in the same volume.
-- [ ] `gpt-4.1-mini` — `Standard` AND `GlobalStandard` 50K TPM each. Same
-      region. **Why**: 4.1-mini is the non-reasoning successor to deprecated
-      `gpt-4o-mini` and projects to ~6× cheaper than gpt-4o at comparable
-      quality. Trial sub had Batch quota only (unusable for live chat);
-      prod sub typically opens Standard. Migrate when approved + verified
-      via 20-case A/B against gpt-4o (matches the 2026-05-10 methodology).
-- [ ] `whisper` — `Standard` 15 RPM in chosen region. Trial defaulted to
+- [ ] `gpt-4.1-mini` — `Standard` AND `GlobalStandard` 50K TPM each in
+      `francecentral`. **Why**: 4.1-mini is the non-reasoning successor
+      to deprecated `gpt-4o-mini` and projects to ~6× cheaper than gpt-4o
+      at comparable quality. Trial sub had Batch quota only (unusable for
+      live chat); prod sub typically opens Standard. Migrate when approved
+      + verified via 20-case A/B against gpt-4o (matches the 2026-05-10
+      methodology).
+- [ ] `whisper` — `Standard` 15 RPM in `francecentral`. Trial defaulted to
       ~1 RPM which throttled voice transcription under realistic load
       (memory `azure_openai_deployment.md`, ~5000 tickets/month → 1.7 RPM
-      sustained, peak <15).
+      sustained, peak <15). **Verify** `whisper` model is available in
+      `francecentral` at quota-request time — Azure does roll Whisper to
+      new regions but it lags GPT models by months. Fallback: keep Whisper
+      in `swedencentral` only (a single cross-region hop for STT is
+      acceptable, voice is async UX).
 - [ ] Skip GPT-5 family entirely. A/B verdict 2026-05-10: reasoning_tokens
       dominate billing, no cost-quality advantage over gpt-4o for transform
       tasks. Re-evaluate only if OpenAI ships a new non-reasoning mini.
+- [ ] Update Container App env vars at cutover time:
+      `AI_BASE_URL=https://oai-guichet-prod-brk.openai.azure.com/`,
+      `AZURE_OPENAI_DEPLOYMENT=gpt-4o`, plus `AI_API_KEY` secret rotated
+      to the new resource's key.
 
 Request via Azure portal: Cognitive Services → resource → Quotas →
 Request Increase. Justification text: "Production launch of multi-tenant
-live chat support platform; per-call cost modelling and quality A/B
-results in `runAction.ts` top-of-file; expected steady-state load ~30k
-chats/month."
+live chat support platform serving Belgium + Morocco user base; per-call
+cost modelling and quality A/B results in `runAction.ts` top-of-file;
+expected steady-state load ~30k chats/month; deploying in `francecentral`
+to consolidate with rest of stack and minimize EU-MA round-trip latency."
 
 ### Client → Static Web Apps Free migration (T-7 days, requires custom domain)
 
