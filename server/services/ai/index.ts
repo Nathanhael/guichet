@@ -26,5 +26,6 @@ export { getCachedTranslation, setCachedTranslation, invalidateTranslation } fro
 export { formatMessagesForAi } from './messageFormatter.js';
 export { runAiAction } from './runAction.js';
 export { runAiBootHealthCheck } from './bootHealthCheck.js';
+export { prewarmHistoryTranslations } from './bulkHistoryPrewarm.js';
 export type { AiSchema } from './context.js';
 export { initAiContext, getAiContext } from './context.js';

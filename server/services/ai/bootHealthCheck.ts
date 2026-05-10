@@ -8,7 +8,7 @@ import { getAiContext } from './context.js';
  * Logs at `error` level on failure so a stale API key — e.g. when an
  * Azure OpenAI resource rotates key1/key2 and the Container App secret
  * goes out of sync — surfaces in container logs immediately on revision
- * start. Without this, `firstMessageTranslate.ts` and `runAction.ts`
+ * start. Without this, `bulkHistoryPrewarm.ts` and `runAction.ts`
  * swallow the 401, the client falls back to the original text, and the
  * breakage stays silent until someone notices translations stopped.
  *

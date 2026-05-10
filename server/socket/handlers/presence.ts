@@ -13,7 +13,7 @@ import {
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { findUserName } from '../../services/userQueries.js';
-import { translateFirstAgentMessage } from '../../services/ai/firstMessageTranslate.js';
+import { prewarmHistoryTranslations } from '../../services/ai/index.js';
 import {
   requireIdentified,
   validatePayload,
@@ -129,37 +129,30 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
       const msgs = msgRows.map(mapMessageRow);
 
-      // Best-effort: translate the first agent message to support's lang
-      // before emitting history, so msg #1 renders pre-translated and the
-      // client's useAutoTranslation skips its own request. Cache hits are
-      // ~instant; cold-cache calls race a 1500ms budget. On budget miss
-      // or any failure, the client falls back to its on-demand translate.
-      const firstAgentMsg = msgs.find(
-        (m) => !m.system && !m.whisper && m.senderRole === 'agent' && !!m.text,
-      );
-      if (firstAgentMsg && supportLang && firstAgentMsg.senderLang !== supportLang) {
+      // Best-effort: bulk-prewarm Redis translation cache for the entire
+      // history window before emitting, so client's useAutoTranslation
+      // hits cache instantly per msg and the user sees no per-msg flicker.
+      // Concurrency 3, 8000ms budget. Anything not finished by then falls
+      // back to client-side lazy on-demand translate. Replaces the older
+      // msg-#1-only race.
+      if (supportLang) {
         try {
-          const translated = await Promise.race([
-            translateFirstAgentMessage({
-              messageId: firstAgentMsg.id,
-              text: firstAgentMsg.text ?? firstAgentMsg.originalText,
-              senderLang: firstAgentMsg.senderLang,
-              supportLang,
-              partnerId: callerPartnerId,
-              supportUserId: supportId,
-            }),
-            new Promise<null>((r) => setTimeout(() => r(null), 1500)),
-          ]);
-          if (translated) {
-            firstAgentMsg.translations = {
-              ...(firstAgentMsg.translations ?? {}),
-              [supportLang]: translated,
-            };
+          const prewarmed = await prewarmHistoryTranslations({
+            messages: msgs,
+            supportLang,
+            partnerId: callerPartnerId,
+            supportUserId: supportId,
+          });
+          for (const m of msgs) {
+            const t = prewarmed.get(m.id);
+            if (t) {
+              m.translations = { ...(m.translations ?? {}), [supportLang]: t };
+            }
           }
         } catch (err) {
           logger.warn(
             { err: err instanceof Error ? err.message : String(err), ticketId, supportLang },
-            '[support:join] first-msg translate skipped (non-fatal)',
+            '[support:join] bulk prewarm skipped (non-fatal)',
           );
         }
       }
