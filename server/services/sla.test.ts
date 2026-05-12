@@ -152,8 +152,28 @@ vi.mock('../utils/logger.js', () => ({
 
 // ─── Imports under test ─────────────────────────────────────────────────────
 
-import { computeSlaState, markFirstStaffResponse, runSlaSweep, setSlaIo, type ComputeSlaInput } from './sla.js';
+import {
+  computeSlaState,
+  createSlaSweeper,
+  type ComputeSlaInput,
+  type SlaBreachBroadcaster,
+  type SlaBreachPayload,
+  type SlaSweeper,
+} from './sla/index.js';
 import type { BusinessHoursSchedule } from './businessHours.js';
+
+type SpyBroadcaster = SlaBreachBroadcaster & { calls: SlaBreachPayload[] };
+
+function createSpyBroadcaster(): SpyBroadcaster {
+  const calls: SlaBreachPayload[] = [];
+  return {
+    calls,
+    emitBreach(payload) { calls.push(payload); },
+  };
+}
+
+let spyBroadcaster: SpyBroadcaster;
+let sweeper: SlaSweeper;
 
 beforeEach(() => {
   h.ticketsUpdateReturnQueue.length = 0;
@@ -170,9 +190,8 @@ beforeEach(() => {
   h.updateMock.mockClear();
   h.selectMock.mockClear();
   h.insertMock.mockClear();
-  // Reset io to null between tests by clearing it via setSlaIo(null as never) hack is not possible.
-  // Instead each test that needs io should call setSlaIo(...) explicitly; tests that don't care
-  // rely on the emit short-circuiting (io?.to(...)).
+  spyBroadcaster = createSpyBroadcaster();
+  sweeper = createSlaSweeper({ broadcaster: spyBroadcaster });
 });
 
 // ─── Existing pure-function tests ───────────────────────────────────────────
@@ -275,7 +294,7 @@ describe('markFirstStaffResponse', () => {
     h.breachesUpdateReturnQueue.push([]); // no breach to resolve
 
     const at = '2026-04-20T10:20:00Z';
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'support', isWhisper: false });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'support', isWhisper: false });
 
     expect(result.stamped).toBe(true);
     expect(result.resolvedBreach).toBe(false);
@@ -284,7 +303,7 @@ describe('markFirstStaffResponse', () => {
   });
 
   it('ignores whisper messages', async () => {
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'support', isWhisper: true });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'support', isWhisper: true });
 
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
@@ -292,7 +311,7 @@ describe('markFirstStaffResponse', () => {
   });
 
   it('ignores agent (non-staff) messages', async () => {
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'agent', isWhisper: false });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'agent', isWhisper: false });
 
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
@@ -303,7 +322,7 @@ describe('markFirstStaffResponse', () => {
     // Guarded UPDATE returns zero rows (row's first_staff_response_at is not null).
     h.ticketsUpdateReturnQueue.push([]);
 
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'admin', isWhisper: false });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:00:00Z', senderRole: 'admin', isWhisper: false });
 
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
@@ -316,7 +335,7 @@ describe('markFirstStaffResponse', () => {
     h.breachesUpdateReturnQueue.push([{ id: 'b_001' }]);
 
     const at = '2026-04-20T10:40:00Z';
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'admin', isWhisper: false });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'admin', isWhisper: false });
 
     expect(result.stamped).toBe(true);
     expect(result.resolvedBreach).toBe(true);
@@ -333,7 +352,7 @@ describe('markFirstStaffResponse', () => {
     h.breachesUpdateReturnQueue.push([]);
 
     const at = '2026-04-20T10:05:00Z';
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'platform_operator', isWhisper: false });
+    const result = await sweeper.markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'platform_operator', isWhisper: false });
 
     expect(result.stamped).toBe(true);
     expect(h.ticketsSetCalls).toHaveLength(1);
@@ -388,7 +407,7 @@ describe('runSlaSweep', () => {
     h.ticketsSelectReturnQueue.push([breachingTicket('t1')]);
     h.slaBreachesInsertReturnQueue.push([{ id: 'b1' }]);
 
-    const first = await runSlaSweep();
+    const first = await sweeper.runSweep();
     expect(first.breachesInserted).toBeGreaterThanOrEqual(1);
     expect(first.partnersChecked).toBe(1);
     expect(first.ticketsChecked).toBe(1);
@@ -405,7 +424,7 @@ describe('runSlaSweep', () => {
     h.ticketsSelectReturnQueue.push([breachingTicket('t1')]);
     h.slaBreachesInsertReturnQueue.push([]); // conflict → skipped
 
-    const second = await runSlaSweep();
+    const second = await sweeper.runSweep();
     expect(second.breachesInserted).toBe(0);
   });
 
@@ -419,7 +438,7 @@ describe('runSlaSweep', () => {
     // queue returns [] and we still verify no inserts.
     h.ticketsSelectReturnQueue.push([]);
 
-    const summary = await runSlaSweep();
+    const summary = await sweeper.runSweep();
 
     expect(summary.partnersChecked).toBe(1);
     expect(summary.breachesInserted).toBe(0);
@@ -427,28 +446,20 @@ describe('runSlaSweep', () => {
     expect(h.breachesIncMock).not.toHaveBeenCalled();
   });
 
-  it('emits sla:breach socket event when a breach is recorded', async () => {
-    const emitMock = vi.fn();
-    const toMock = vi.fn(() => ({ emit: emitMock }));
-    const mockIo = { to: toMock } as any;
-    setSlaIo(mockIo);
-
+  it('emits sla:breach broadcast when a breach is recorded', async () => {
     h.partnersSelectReturnQueue.push([PARTNER_WITH_SLA]);
     h.ticketsSelectReturnQueue.push([breachingTicket('t42')]);
     h.slaBreachesInsertReturnQueue.push([{ id: 'b42' }]);
 
-    await runSlaSweep();
+    await sweeper.runSweep();
 
-    expect(toMock).toHaveBeenCalledWith('ticket:t42');
-    expect(emitMock).toHaveBeenCalledWith(
-      'sla:breach',
-      expect.objectContaining({
-        ticketId: 't42',
-        partnerId: 'pA',
-        department: 'general',
-        overdueMinutes: expect.any(Number),
-      }),
-    );
+    expect(spyBroadcaster.calls).toHaveLength(1);
+    expect(spyBroadcaster.calls[0]).toMatchObject({
+      ticketId: 't42',
+      partnerId: 'pA',
+      department: 'general',
+      overdueMinutes: expect.any(Number),
+    });
   });
 
   it('skips partners with no SLA-enabled departments', async () => {
@@ -457,7 +468,7 @@ describe('runSlaSweep', () => {
     // return empty — either way, no breach should be written.
     h.ticketsSelectReturnQueue.push([]);
 
-    const summary = await runSlaSweep();
+    const summary = await sweeper.runSweep();
 
     expect(summary.breachesInserted).toBe(0);
     expect(h.slaBreachesInsertValuesCalls).toHaveLength(0);
