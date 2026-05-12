@@ -203,7 +203,6 @@ distinguishes a genuine tamper (`chain_broken`) from an infra outage
 | `tickets` (closed) + `messages` | `GDPR_RETENTION_DAYS` (default 30d) | `server/services/gdpr.ts` |
 | `ai_usage_log` | `GDPR_RETENTION_DAYS` (rolled up to `daily_ai_usage` first) | `server/services/gdpr.ts` |
 | `rating.comment` | `RATINGS_COMMENT_RETENTION_DAYS` (default 30d) — nullified, row kept | `server/services/gdpr.ts` |
-| Abandoned invites | 30d from creation | `server/services/gdpr.ts::purgeAbandonedInvites` |
 | Chain verify history | Last 50 runs | `server/services/chainVerifySchedule.ts` |
 | Agent status log | 30d (rolled up to `daily_agent_status`) | `CLAUDE.md` retention notes |
 
