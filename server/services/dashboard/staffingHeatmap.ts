@@ -17,6 +17,10 @@
  * Day-of-week convention: JS `Date#getUTCDay()` (0 = Sunday … 6 = Saturday).
  */
 
+import { dateInWindow, dowFor, round1, type DateWindow } from './shared.js';
+
+export type { DateWindow };
+
 export interface DailyStatsRow {
   date: string;
   hourly: number[];
@@ -38,7 +42,7 @@ export interface AgentStatusRow {
 export interface StaffingHeatmapInput {
   dailyStats: DailyStatsRow[];
   agentStatus?: AgentStatusRow[];
-  window: { from: Date; to: Date };
+  window: DateWindow;
   now?: Date;
   excludeWeekends?: boolean;
 }
@@ -65,26 +69,13 @@ export interface StaffingHeatmap {
 const HOURS = 24;
 const WEEKEND_DOWS = new Set([0, 6]);
 
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
-function dowFor(dateStr: string): number {
-  return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
-}
-
-function dateInWindow(dateStr: string, from: Date, to: Date): boolean {
-  const t = new Date(`${dateStr}T00:00:00Z`).getTime();
-  return t >= from.getTime() && t <= to.getTime();
-}
-
 export function buildStaffingHeatmap(input: StaffingHeatmapInput): StaffingHeatmap {
   const now = input.now ?? new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const todayDow = now.getUTCDay();
 
   const inWindow = input.dailyStats.filter((row) =>
-    dateInWindow(row.date, input.window.from, input.window.to),
+    dateInWindow(row.date, input.window),
   );
 
   const includeRow = (row: DailyStatsRow): boolean =>
@@ -114,7 +105,7 @@ export function buildStaffingHeatmap(input: StaffingHeatmapInput): StaffingHeatm
   const filteredAgents = (input.agentStatus ?? []).filter(
     (r) =>
       r.onlineSeconds > 0 &&
-      dateInWindow(r.date, input.window.from, input.window.to) &&
+      dateInWindow(r.date, input.window) &&
       (!input.excludeWeekends || !WEEKEND_DOWS.has(dowFor(r.date))),
   );
 

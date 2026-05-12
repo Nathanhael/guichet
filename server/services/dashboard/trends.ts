@@ -16,12 +16,11 @@
 
 const WEEKEND_DOWS = new Set([0, 6]);
 
+import { dateInWindow, dowFor, round1, type DateWindow } from './shared.js';
+
 export type TrendGranularity = 'daily' | 'weekly' | 'monthly';
 
-export interface DateWindow {
-  from: Date;
-  to: Date;
-}
+export type { DateWindow };
 
 export interface TrendsDailyRow {
   date: string;            // YYYY-MM-DD
@@ -61,10 +60,6 @@ interface BucketAcc {
   responseCount: number;
 }
 
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
 function chooseGranularity(window: DateWindow): TrendGranularity {
   // End-of-day `to` timestamps make the literal diff fall just under N days,
   // so floor + 1 recovers the inclusive calendar-day count.
@@ -73,15 +68,6 @@ function chooseGranularity(window: DateWindow): TrendGranularity {
   if (days <= 14) return 'daily';
   if (days <= 90) return 'weekly';
   return 'monthly';
-}
-
-function dateInWindow(dateStr: string, w: DateWindow): boolean {
-  const t = new Date(`${dateStr}T00:00:00Z`).getTime();
-  return t >= w.from.getTime() && t <= w.to.getTime();
-}
-
-function dowFor(dateStr: string): number {
-  return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
 }
 
 function bucketKey(dateStr: string, granularity: TrendGranularity): string {
