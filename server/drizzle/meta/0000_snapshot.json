@@ -1,5 +1,5 @@
 {
-  "id": "d77c00e8-b056-4b6e-b8a1-458a36187d54",
+  "id": "2b447ae7-933a-4858-9512-bd78c9361244",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -143,6 +143,163 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ai_feedback": {
+      "name": "ai_feedback",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "partner_id": {
+          "name": "partner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "usage_log_id": {
+          "name": "usage_log_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rating": {
+          "name": "rating",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_text": {
+          "name": "original_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai_output": {
+          "name": "ai_output",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_final_choice": {
+          "name": "user_final_choice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_ai_feedback_partner_created": {
+          "name": "idx_ai_feedback_partner_created",
+          "columns": [
+            {
+              "expression": "partner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ai_feedback_usage_log": {
+          "name": "idx_ai_feedback_usage_log",
+          "columns": [
+            {
+              "expression": "usage_log_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ai_feedback_partner_id_partners_id_fk": {
+          "name": "ai_feedback_partner_id_partners_id_fk",
+          "tableFrom": "ai_feedback",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ai_feedback_user_id_users_id_fk": {
+          "name": "ai_feedback_user_id_users_id_fk",
+          "tableFrom": "ai_feedback",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "ai_feedback_usage_log_id_ai_usage_log_id_fk": {
+          "name": "ai_feedback_usage_log_id_ai_usage_log_id_fk",
+          "tableFrom": "ai_feedback",
+          "tableTo": "ai_usage_log",
+          "columnsFrom": [
+            "usage_log_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -313,6 +470,12 @@
         "error_message": {
           "name": "error_message",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -601,6 +764,13 @@
           "notNull": false,
           "default": 0
         },
+        "references": {
+          "name": "references",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp",
@@ -653,6 +823,21 @@
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
+          "with": {}
+        },
+        "idx_archived_tickets_references": {
+          "name": "idx_archived_tickets_references",
+          "columns": [
+            {
+              "expression": "references",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
           "with": {}
         }
       },
@@ -1053,6 +1238,27 @@
           "primaryKey": false,
           "notNull": false
         },
+        "source_lang": {
+          "name": "source_lang",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "body_translations": {
+          "name": "body_translations",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "stale_translations": {
+          "name": "stale_translations",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
         "created_by": {
           "name": "created_by",
           "type": "text",
@@ -1187,6 +1393,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "hourly_online_seconds": {
+          "name": "hourly_online_seconds",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]'::jsonb"
         },
         "created_at": {
           "name": "created_at",
@@ -1979,13 +2192,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "sender_is_external": {
-          "name": "sender_is_external",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "text": {
           "name": "text",
           "type": "text",
@@ -2046,6 +2252,12 @@
         },
         "deleted_at": {
           "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "improved_at": {
+          "name": "improved_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -2176,6 +2388,36 @@
           "isUnique": false,
           "concurrently": false,
           "method": "gin",
+          "with": {}
+        },
+        "idx_messages_attachments_gin": {
+          "name": "idx_messages_attachments_gin",
+          "columns": [
+            {
+              "expression": "attachments",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "idx_messages_media_url": {
+          "name": "idx_messages_media_url",
+          "columns": [
+            {
+              "expression": "media_url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
           "with": {}
         }
       },
@@ -2326,12 +2568,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "logo_url": {
-          "name": "logo_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "industry": {
           "name": "industry",
           "type": "text",
@@ -2352,25 +2588,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "business_hours_start": {
-          "name": "business_hours_start",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "business_hours_end": {
-          "name": "business_hours_end",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "business_hours_timezone": {
-          "name": "business_hours_timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'Europe/Brussels'"
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -2390,7 +2607,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false,
-          "default": "'ollama'"
+          "default": "'azure'"
         },
         "ai_model": {
           "name": "ai_model",
@@ -2412,11 +2629,44 @@
           "notNull": false,
           "default": "'{}'::jsonb"
         },
+        "ai_pii_redaction": {
+          "name": "ai_pii_redaction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai_audit_verbosity": {
+          "name": "ai_audit_verbosity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai_terms": {
+          "name": "ai_terms",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
+        "ai_custom_instructions": {
+          "name": "ai_custom_instructions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'::jsonb"
+        },
         "sso_attribute_map": {
           "name": "sso_attribute_map",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "dashboard_config": {
+          "name": "dashboard_config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "created_at": {
           "name": "created_at",
@@ -2877,6 +3127,147 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.sla_breaches": {
+      "name": "sla_breaches",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ticket_id": {
+          "name": "ticket_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "partner_id": {
+          "name": "partner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dept": {
+          "name": "dept",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "breached_at": {
+          "name": "breached_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "threshold_minutes": {
+          "name": "threshold_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolved_reason": {
+          "name": "resolved_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_sla_breaches_ticket_unique": {
+          "name": "idx_sla_breaches_ticket_unique",
+          "columns": [
+            {
+              "expression": "ticket_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sla_breaches_partner_status": {
+          "name": "idx_sla_breaches_partner_status",
+          "columns": [
+            {
+              "expression": "partner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "resolved_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_sla_breaches_breached_at": {
+          "name": "idx_sla_breaches_breached_at",
+          "columns": [
+            {
+              "expression": "breached_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sla_breaches_ticket_id_tickets_id_fk": {
+          "name": "sla_breaches_ticket_id_tickets_id_fk",
+          "tableFrom": "sla_breaches",
+          "tableTo": "tickets",
+          "columnsFrom": [
+            "ticket_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sla_breaches_partner_id_partners_id_fk": {
+          "name": "sla_breaches_partner_id_partners_id_fk",
+          "tableFrom": "sla_breaches",
+          "tableTo": "partners",
+          "columnsFrom": [
+            "partner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.system_settings": {
       "name": "system_settings",
       "schema": "",
@@ -3049,6 +3440,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "first_staff_response_at": {
+          "name": "first_staff_response_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "queue_entered_at": {
+          "name": "queue_entered_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3200,6 +3604,27 @@
           "method": "btree",
           "with": {}
         },
+        "idx_tickets_partner_closed": {
+          "name": "idx_tickets_partner_closed",
+          "columns": [
+            {
+              "expression": "partner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "closed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_tickets_partner_status": {
           "name": "idx_tickets_partner_status",
           "columns": [
@@ -3261,7 +3686,7 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
+              "expression": "queue_entered_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3269,6 +3694,28 @@
           ],
           "isUnique": false,
           "where": "status = 'open' AND support_id IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tickets_open_unresponded": {
+          "name": "idx_tickets_open_unresponded",
+          "columns": [
+            {
+              "expression": "partner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "status IN ('open','pending') AND first_staff_response_at IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3312,120 +3759,6 @@
             "id"
           ],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.topic_alerts": {
-      "name": "topic_alerts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "partner_id": {
-          "name": "partner_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dept": {
-          "name": "dept",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "topic": {
-          "name": "topic",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "severity": {
-          "name": "severity",
-          "type": "severity",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'medium'"
-        },
-        "ticket_count": {
-          "name": "ticket_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "alert_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'active'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "resolved_at": {
-          "name": "resolved_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "idx_alerts_partner_status": {
-          "name": "idx_alerts_partner_status",
-          "columns": [
-            {
-              "expression": "partner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "topic_alerts_partner_id_partners_id_fk": {
-          "name": "topic_alerts_partner_id_partners_id_fk",
-          "tableFrom": "topic_alerts",
-          "tableTo": "partners",
-          "columnsFrom": [
-            "partner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -3496,13 +3829,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'::jsonb"
-        },
-        "is_external": {
-          "name": "is_external",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "last_active_at": {
           "name": "last_active_at",
@@ -3833,15 +4159,6 @@
     }
   },
   "enums": {
-    "public.alert_status": {
-      "name": "alert_status",
-      "schema": "public",
-      "values": [
-        "active",
-        "acknowledged",
-        "resolved"
-      ]
-    },
     "public.membership_source": {
       "name": "membership_source",
       "schema": "public",
@@ -3858,16 +4175,6 @@
         "support",
         "admin",
         "platform_operator"
-      ]
-    },
-    "public.severity": {
-      "name": "severity",
-      "schema": "public",
-      "values": [
-        "low",
-        "medium",
-        "high",
-        "critical"
       ]
     },
     "public.ticket_status": {

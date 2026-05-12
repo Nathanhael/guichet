@@ -1,1 +1,0 @@
-ALTER TABLE "partners" DROP COLUMN "ai_features_available";

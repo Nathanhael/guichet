@@ -1,1 +1,0 @@
-ALTER TABLE "ai_usage_log" ADD COLUMN "metadata" jsonb;
