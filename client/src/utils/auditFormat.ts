@@ -110,8 +110,6 @@ export function formatAuditDetails(log: AuditLog, t: T): string {
       return interp(tt('kb_created'), { title: String(m.title || '-') });
     case 'label.created':
       return interp(tt('label_created'), { name: String(m.name || '-') });
-    case 'webhook.created':
-      return interp(tt('webhook_created'), { url: String(m.url || '-') });
 
     default:
       return JSON.stringify(m);

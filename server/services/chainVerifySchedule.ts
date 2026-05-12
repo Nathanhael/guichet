@@ -11,7 +11,6 @@ import { db } from '../db.js';
 import { auditLog, systemSettings } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
-import { broadcastWebhook } from './webhookDispatch.js';
 import { verifyAuditChain } from './archive.js';
 import { Rooms } from '../utils/rooms.js';
 import type { Server } from 'socket.io';
@@ -110,13 +109,6 @@ export async function runChainVerify(actor: RunnerActor): Promise<ChainVerifyRec
       },
     });
     if (severity === 'critical') {
-      broadcastWebhook('audit.chain_broken', {
-        checked: result.checked,
-        brokenAt: result.brokenAt ?? null,
-        ranAt: record.ranAt,
-        ranBy: record.ranBy,
-        ranByName: record.ranByName,
-      });
       // Push to platform-operators room so the Health page lights up instantly
       // without waiting for the next 5-minute poll. UI listens on `audit:chain:broken`.
       io?.to(Rooms.platformOperators()).emit('audit:chain:broken', {

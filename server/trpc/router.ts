@@ -11,7 +11,6 @@ import { platformRouter } from './routers/platform/index.js';
 import { partnerRouter } from './routers/partner/index.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
 import { kbRouter } from './routers/kb.js';
-import { webhookRouter } from './routers/webhook.js';
 import { aiRouter } from './routers/ai.js';
 import { statusRouter } from './routers/status.js';
 import { linkPreviewRouter } from './routers/linkPreview.js';
@@ -36,7 +35,6 @@ export const appRouter = router({
   user: userRouter,
   platform: platformRouter,
   partner: partnerRouter,
-  webhook: webhookRouter,
   linkPreview: linkPreviewRouter,
   sla: slaRouter,
 });

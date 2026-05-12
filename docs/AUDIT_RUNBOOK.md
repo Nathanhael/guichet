@@ -2,7 +2,7 @@
 
 Operational reference for the Guichet audit subsystem: the WORM archive, the
 SHA-256 hash chain, the chain-verify scheduler, partner-scoped verify, the
-ticket-lifecycle emitter, the webhook-backed alerting, and the retention
+ticket-lifecycle emitter, the in-app chain-broken alerting, and the retention
 observability counters.
 
 Treat this as the first document to open when:
@@ -10,7 +10,6 @@ Treat this as the first document to open when:
 - The Health page in PlatformView shows a red `Audit chain integrity broken` banner (or the live `audit:chain:broken` socket toast pops)
 - The Health page shows the amber `Audit chain has not been verified in over 25 hours` banner
 - The Health page shows `GDPR purge failed` / `GDPR purge overdue` banners
-- The chain-broken webhook fired (configured via the `webhook.*` tRPC router / Webhooks admin panel)
 - An auditor asks for chain-integrity attestation evidence
 - The audit drawer renders empty for tickets that should have lifecycle rows
 
@@ -22,7 +21,7 @@ Treat this as the first document to open when:
 |---|---|---|
 | WORM audit archive | `server/services/archive.ts` | Immutable copy of `audit_log` with a SHA-256 hash chain. |
 | Chain verify service | `server/services/archive.ts::verifyAuditChain` | Recomputes the full chain and returns `{ valid, checked, brokenAt, ... }`. |
-| Shared verify runner | `server/services/chainVerifySchedule.ts::runChainVerify` | Persists results to `system_settings`, broadcasts the chain-broken webhook, and emits the `audit:chain:broken` socket event to the platform-operators room on critical breaks. Used by both the operator button and the daily scheduler. |
+| Shared verify runner | `server/services/chainVerifySchedule.ts::runChainVerify` | Persists results to `system_settings` and emits the `audit:chain:broken` socket event to the platform-operators room on critical breaks. Used by both the operator button and the daily scheduler. |
 | Daily scheduler | `server/services/chainVerifySchedule.ts::scheduleDailyChainVerify` | Armed at boot with a 10–40m startup jitter, then a 24h interval. Uses synthetic actor `system-scheduler`. |
 | Platform verify UI | `client/src/components/admin/PlatformSystemHealth.tsx` | "Verify chain" button + staleness banner + run history table + CSV export. |
 | Ticket lifecycle module | `server/services/ticketLifecycle/` | Owns every state transition that produces an audit row. Emits ticket.created / closed / assigned / transferred / returned_to_queue / reopened / **left / reclaimed**. The audit insert runs INSIDE the lifecycle transaction — a DB failure rolls back the whole event. |
@@ -59,30 +58,18 @@ servers restarts simultaneously (e.g. after a deploy).
 
 ---
 
-## 3. Webhook payload on chain break
+## 3. In-app alerting on chain break
 
-`broadcastWebhook('audit.chain_broken', ...)` fires when
-`verifyAuditChain` returns `valid=false` with a non-null `brokenAt` AND the
-break was not categorised as a service-level error (i.e. it's a real tamper,
-not a db timeout).
+When `verifyAuditChain` returns `valid=false` with a non-null `brokenAt`
+AND the break was not categorised as a service-level error (i.e. a real
+tamper, not a db timeout), the runner pushes the `audit:chain:broken`
+socket event to the `platform:operators` room. The Health page in
+PlatformView lights up instantly without waiting for the next 5-minute
+poll, and a row is written to `audit_log` with action
+`system.chain_broken_detected` and `metadata.severity = 'critical'`.
 
-Payload shape (`audit.chain_broken`):
-
-```json
-{
-  "brokenAt": "<audit_archive.id or null>",
-  "ranBy": "<user id or 'system-scheduler'>",
-  "ranAt": "<ISO timestamp>",
-  "severity": "critical"
-}
-```
-
-The same code path also pushes the `audit:chain:broken` socket event to
-the `platform:operators` room — the Health page in PlatformView lights up
-instantly without waiting for the next 5-minute poll.
-
-Service-level errors (severity=warn) DO NOT broadcast or push — those are
-infra alarms for the operator, not compliance signals for the tenant.
+Service-level errors (severity=warn) DO NOT push — those are infra
+alarms for the operator, not compliance signals for the tenant.
 
 ---
 

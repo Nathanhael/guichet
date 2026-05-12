@@ -9,9 +9,8 @@ import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
 import AdminCannedResponses from '../components/admin/AdminCannedResponses';
-// DISABLED_FEATURE: Knowledge Base, Webhooks — hidden until production-ready
+// DISABLED_FEATURE: Knowledge Base — hidden until production-ready
 // import AdminKnowledgeBase from '../components/admin/AdminKnowledgeBase';
-// import AdminWebhooks from '../components/admin/AdminWebhooks';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAi from '../components/admin/AdminAi';
@@ -53,7 +52,7 @@ type AdminTab =
   | 'labels'
   | 'canned_responses'
   | 'ai_customization';
-// DISABLED_FEATURE: removed 'knowledge_base' | 'webhooks'
+// DISABLED_FEATURE: removed 'knowledge_base'
 
 const SIDEBAR_WIDTH_KEY = 'guichet.adminSidebarWidth';
 const SIDEBAR_MIN = 200;
@@ -161,7 +160,7 @@ export default function AdminView() {
               {navItem('labels', t('labels'), <Tag className="h-4 w-4" />)}
               {navItem('canned_responses', t('canned_responses'), <Zap className="h-4 w-4" />)}
               {navItem('ai_customization', t('admin_tab_ai'), <Sparkles className="h-4 w-4" />)}
-              {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
+              {/* DISABLED_FEATURE: Knowledge Base — NavButton hidden until production-ready */}
             </div>
           </nav>
 
@@ -191,7 +190,7 @@ export default function AdminView() {
           {view === 'labels' && <AdminLabels />}
           {view === 'canned_responses' && <AdminCannedResponses />}
           {view === 'ai_customization' && <AdminAi />}
-          {/* DISABLED_FEATURE: Knowledge Base, Webhooks — tab panels hidden until production-ready */}
+          {/* DISABLED_FEATURE: Knowledge Base — tab panel hidden until production-ready */}
         </main>
       </div>
     </ErrorBoundary>

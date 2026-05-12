@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
 import { broadcastPartnerDeactivation } from '../../../socket/handlers.js';
-import { validateWebhookUrl } from '../../../services/webhookDispatch.js';
+import { validateExternalUrl } from '../../../services/urlValidation.js';
 import { encrypt } from '../../../services/encryption.js';
 import { type BusinessHoursSchedule } from '../../../services/businessHours.js';
 import { emitAiConfigAudits } from '../../../services/ai/auditConfig.js';
@@ -126,7 +126,7 @@ export const platformPartnersRouter = router({
     .mutation(async ({ input, ctx }) => {
       if (input.data.aiConfig?.baseUrl) {
         try {
-          await validateWebhookUrl(input.data.aiConfig.baseUrl);
+          await validateExternalUrl(input.data.aiConfig.baseUrl);
         } catch (err) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
