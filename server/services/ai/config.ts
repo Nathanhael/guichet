@@ -1,11 +1,25 @@
 import { eq } from 'drizzle-orm';
 import type { PartnerAiConfig, ImprovementMode } from './types.js';
 import { getAiContext } from './context.js';
+import { isUserOptedOut } from './optOut.js';
 
 const DEFAULT_CONFIG: PartnerAiConfig = {
   messageImprovement: 'off',
   translation: false,
 };
+
+/**
+ * What the client sees after partner config and per-user opt-out are merged.
+ * `messageImprovement` is degraded from 'forced' to 'optional' when the
+ * caller has opted out — auto-improve-on-send becomes a manual sparkle click
+ * for that one worker, while the partner-wide policy stays intact for others.
+ * `partnerMessageImprovement` exposes the original partner-level setting so
+ * the UI can surface "Auto-verbetering wordt voor jou optioneel" when relevant.
+ */
+export interface EffectiveAiConfig extends PartnerAiConfig {
+  aiOptOut: boolean;
+  partnerMessageImprovement: ImprovementMode;
+}
 
 /**
  * Get the merged AI config for a partner.
@@ -43,6 +57,34 @@ export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiCo
     translation: features.translation === true,
     voiceTranscription: features.voiceTranscription === true,
     cannedTranslation: features.cannedTranslation === true,
+  };
+}
+
+/**
+ * Effective AI config for a specific worker. Folds the partner config in with
+ * `memberships.aiOptOut` so the client doesn't need to know the override rule.
+ *
+ * Rule: when `aiOptOut` is true AND partner `messageImprovement` is `'forced'`,
+ * the effective mode for this user is `'optional'`. All other config carries
+ * through unchanged — translation, voice transcription etc. remain functional
+ * because anonymization (not de-featurization) is the contract.
+ */
+export async function getEffectiveAiConfig(
+  partnerId: string,
+  userId: string,
+): Promise<EffectiveAiConfig> {
+  const partnerConfig = await getPartnerAiConfig(partnerId);
+  const aiOptOut = await isUserOptedOut(partnerId, userId);
+  const partnerMessageImprovement = partnerConfig.messageImprovement ?? 'off';
+  const effectiveImprovement: ImprovementMode =
+    aiOptOut && partnerMessageImprovement === 'forced'
+      ? 'optional'
+      : partnerMessageImprovement;
+  return {
+    ...partnerConfig,
+    messageImprovement: effectiveImprovement,
+    aiOptOut,
+    partnerMessageImprovement,
   };
 }
 

@@ -56,7 +56,12 @@ export interface PromptTemplate {
 
 export interface AiUsageEntry {
   partnerId: string;
-  userId: string;
+  /**
+   * NULL when the calling user has `memberships.aiOptOut = true` — see
+   * `services/ai/optOut.ts`. The action itself still ran; only the personal
+   * identity is severed from the log row.
+   */
+  userId: string | null;
   action: AiAction;
   provider: string;
   model: string;

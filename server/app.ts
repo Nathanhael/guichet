@@ -133,6 +133,7 @@ initRedis().then(({ pubClient, subClient }) => {
       partners: schema.partners,
       tickets: schema.tickets,
       messages: schema.messages,
+      memberships: schema.memberships,
       aiPromptTemplates: schema.aiPromptTemplates,
       aiUsageLog: schema.aiUsageLog,
       systemSettings: schema.systemSettings,
