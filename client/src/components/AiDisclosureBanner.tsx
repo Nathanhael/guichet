@@ -74,7 +74,9 @@ export default function AiDisclosureBanner() {
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="underline text-[var(--color-accent)] hover:text-[var(--color-ink)]"
+            aria-haspopup="dialog"
+            aria-expanded={modalOpen}
+            className="underline text-[var(--color-accent)] hover:text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] rounded-sm"
           >
             {t('ai_banner_more')}
           </button>
