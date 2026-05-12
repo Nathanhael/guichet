@@ -30,7 +30,7 @@ import { runDailyPurge } from './services/gdpr.js';
 
 import { cleanupExpiredTokens } from './services/auth/index.js';
 import { scheduleDailyChainVerify, setChainVerifyIo } from './services/chainVerifySchedule.js';
-import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
+import { createSlaSweeper, createSocketIoBroadcaster } from './services/sla/index.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { createTaskRunner } from './utils/taskRunner.js';
 
@@ -505,9 +505,9 @@ registerSocketHandlers(io, { lifecycle, messageLifecycle });
 setBusinessHoursIo(io);
 
 // SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
-setSlaIo(io);
+const slaSweeper = createSlaSweeper({ broadcaster: createSocketIoBroadcaster(io) });
 setChainVerifyIo(io);
-const stopSlaScheduler = scheduleSlaSweep();
+const stopSlaScheduler = slaSweeper.scheduleSweep();
 
 // Graceful shutdown — drain connections on SIGTERM/SIGINT (Docker stop, Ctrl+C)
 let shuttingDown = false;
