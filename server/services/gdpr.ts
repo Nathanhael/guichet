@@ -1,43 +1,52 @@
+/**
+ * Daily GDPR purge orchestrator.
+ *
+ * Sequence: archive-and-verify (throws on chain break) → cascade
+ * (transactional delete + audit anonymization) → satellite cleanups
+ * (storage delete, orphan reaper, AI usage aggregate, comment nullification,
+ * agent_status_log sweep, invite purge) → audit_log success row.
+ *
+ * The chain-verify gate runs OUTSIDE the swallowing try/catch — a broken
+ * chain must propagate so observability code can branch on
+ * `instanceof PurgeAbortedError` / `reason.kind`. Satellite-step failures
+ * are logged and swallowed; they never abort the purge.
+ *
+ * Public API:
+ *   - runDailyPurge — the daily orchestrator (called by app.ts scheduler)
+ *   - aggregateAndPurgeAiUsage — exported for test_gdpr_purge.ts
+ *   - PurgeAbortedError, PurgeAbortReason — structured abort signal
+ */
+
 import { db } from '../db.js';
-import { sql, inArray, and, eq, lt, gte, isNull } from 'drizzle-orm';
+import { sql, inArray, and, eq, lt, gte } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { getStorage } from './storage.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
-import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, users } from '../db/schema.js';
-import { PurgeAbortedError } from './gdpr/errors.js';
+import { archiveTickets } from './archive.js';
+import {
+  tickets,
+  ratings as ratingsTable,
+  messages as messagesTable,
+  auditLog as auditLogTable,
+  dailyStats,
+  archivedTickets,
+  agentStatusLog,
+} from '../db/schema.js';
+
+import { archiveAndVerify } from './gdpr/archiveStep.js';
+import { aggregateAndPurgeAiUsage } from './gdpr/aiUsage.js';
 
 export { PurgeAbortedError, type PurgeAbortReason } from './gdpr/errors.js';
+export { aggregateAndPurgeAiUsage } from './gdpr/aiUsage.js';
 
 export async function runDailyPurge() {
-  // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
-  // This MUST run outside the try/catch so chain integrity violations propagate to the caller.
-  const auditArchived = await archiveAuditLog();
-  const ticketsArchived = await archiveTickets();
-  if (auditArchived > 0 || ticketsArchived > 0) {
-    logger.info({ auditArchived, ticketsArchived }, '[purge] Pre-purge archival complete');
-  }
-
-  // Step 0.5: Verify audit chain integrity after archival.
-  // Must remain OUTSIDE the try/catch — a broken chain must abort the entire purge,
-  // not be silently swallowed by the general error handler.
-  const chainResult = await verifyAuditChain() as { valid: boolean; checked: number; brokenAt?: string; error?: string };
-  if (!chainResult.valid) {
-    const isInfraError = chainResult.checked === 0 && chainResult.error === 'verification_failed';
-    const message = isInfraError
-      ? '[purge] Audit chain verification failed due to infrastructure error — aborting purge as precaution'
-      : '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken';
-    logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked, isInfraError }, message);
-    throw new PurgeAbortedError(
-      isInfraError
-        ? { kind: 'chain_infra_error', error: chainResult.error }
-        : { kind: 'chain_broken', brokenAt: chainResult.brokenAt, checked: chainResult.checked },
-    );
-  } else if (chainResult.checked > 0) {
-    logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
-  }
+  // Archive-before-purge + chain verify. MUST run outside the try/catch
+  // below — a broken chain must abort the purge, not be silently swallowed.
+  // Throws PurgeAbortedError on chain failure (kind = chain_broken or
+  // chain_infra_error).
+  await archiveAndVerify();
 
   try {
     const cutoff = new Date();
@@ -271,117 +280,16 @@ export async function runDailyPurge() {
       .where(lt(agentStatusLog.startedAt, statusCutoff));
     logger.info({ cutoff: statusCutoff }, '[gdpr] Purged old agent_status_log entries');
 
-    // Step: Purge abandoned invites — user rows with no externalId that have
-    // never claimed via SSO. After the Azure-only purge no production path
-    // creates such rows anymore (SSO callback stamps externalId on insert);
-    // this remains as a defensive backstop for legacy data + non-prod fixtures.
-    const invitesPurged = await purgeAbandonedInvites();
-    if (invitesPurged > 0) {
-      logger.info({ invitesPurged }, '[purge] Abandoned invites purged');
-    }
-
     // Log the successful purge in audit_log
     await db.insert(auditLogTable).values({
       action: 'system.gdpr_purge',
       actorId: null, // System action, no user associated
       targetType: 'system',
-      metadata: { cutoffDate, aiUsagePurged: aiPurged, invitesPurged, success: true }
+      metadata: { cutoffDate, aiUsagePurged: aiPurged, success: true }
     });
 
     logger.info(`[purge] GDPR purge complete for data older than ${cutoffDate}.`);
   } catch (err) {
     logger.error({ err }, '[purge] Error during daily purge');
   }
-}
-
-/**
- * Aggregate ai_usage_log rows older than AI_USAGE_RETENTION_DAYS into
- * daily_ai_usage summaries, then delete the source rows.
- * Returns the number of rows purged.
- */
-export async function aggregateAndPurgeAiUsage(): Promise<number> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - config.AI_USAGE_RETENTION_DAYS);
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
-
-  // ME-04 fix: Wrap aggregate + delete in a transaction to prevent data loss on crash
-  let purgedCount = 0;
-  await db.transaction(async (tx) => {
-    // Step 1: Aggregate into daily_ai_usage (upsert to be idempotent)
-    await tx.execute(sql`
-      INSERT INTO ${dailyAiUsage}
-        (id, date, partner_id, action, provider, model,
-         total_input_tokens, total_output_tokens, total_requests,
-         success_count, error_count, avg_latency_ms)
-      SELECT
-        gen_random_uuid(),
-        created_at::date::text,
-        partner_id,
-        action,
-        provider,
-        model,
-        COALESCE(SUM(input_tokens), 0),
-        COALESCE(SUM(output_tokens), 0),
-        COUNT(*),
-        COUNT(*) FILTER (WHERE success = true),
-        COUNT(*) FILTER (WHERE success = false),
-        CASE WHEN COUNT(*) FILTER (WHERE latency_ms IS NOT NULL) > 0
-             THEN (SUM(latency_ms) / COUNT(*) FILTER (WHERE latency_ms IS NOT NULL))::int
-             ELSE NULL END
-      FROM ${aiUsageLog}
-      WHERE ${aiUsageLog.createdAt} < ${cutoffDate}
-      GROUP BY created_at::date::text, partner_id, action, provider, model
-      ON CONFLICT (date, partner_id, action, provider, model) DO UPDATE SET
-        total_input_tokens  = ${dailyAiUsage}.total_input_tokens  + EXCLUDED.total_input_tokens,
-        total_output_tokens = ${dailyAiUsage}.total_output_tokens + EXCLUDED.total_output_tokens,
-        total_requests      = ${dailyAiUsage}.total_requests      + EXCLUDED.total_requests,
-        success_count       = ${dailyAiUsage}.success_count       + EXCLUDED.success_count,
-        error_count         = ${dailyAiUsage}.error_count         + EXCLUDED.error_count,
-        avg_latency_ms      = CASE
-          WHEN (${dailyAiUsage}.total_requests + EXCLUDED.total_requests) > 0
-          THEN ((COALESCE(${dailyAiUsage}.avg_latency_ms, 0) * ${dailyAiUsage}.total_requests
-               + COALESCE(EXCLUDED.avg_latency_ms, 0) * EXCLUDED.total_requests)
-               / (${dailyAiUsage}.total_requests + EXCLUDED.total_requests))::int
-          ELSE NULL END
-    `);
-
-    // Step 2: Delete the now-aggregated source rows (same transaction)
-    const result = await tx.execute(sql`
-      DELETE FROM ${aiUsageLog} WHERE ${aiUsageLog.createdAt} < ${cutoffDate}
-    `);
-    purgedCount = (result as unknown as { rowCount?: number }).rowCount ?? 0;
-  });
-
-  return purgedCount;
-}
-
-export async function purgeAbandonedInvites(): Promise<number> {
-  const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
-  // HARD GUARD: never purge platform operators. Bootstrap (`bootstrapPlatformOperator`)
-  // creates the initial operator with externalId=null until their first SSO login;
-  // without this guard, a staging/restored env where the bootstrap operator hasn't
-  // logged in for 30 days would get the operator permanently deleted by the daily
-  // purge (and memberships cascade). Platform-operator invites follow a different
-  // re-issuance flow — we do NOT want them swept up by GDPR cleanup.
-  const stale = await db.select({ id: users.id, email: users.email })
-    .from(users)
-    .where(and(
-      isNull(users.externalId),
-      eq(users.isPlatformOperator, false),
-      lt(users.createdAt, cutoff),
-    ))
-    .limit(500);
-  if (stale.length === 0) return 0;
-
-  await db.transaction(async (tx) => {
-    await tx.delete(users).where(inArray(users.id, stale.map(s => s.id)));
-    await tx.insert(auditLogTable).values(stale.map(s => ({
-      action: 'invite.purged_stale',
-      targetType: 'user',
-      targetId: s.id,
-      metadata: { email: s.email, reason: 'unclaimed_30d' },
-    })));
-  });
-  logger.info({ count: stale.length }, '[gdpr] Stale invites purged');
-  return stale.length;
 }
