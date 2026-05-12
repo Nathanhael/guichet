@@ -40,7 +40,6 @@ fail-closed at server boot.
 | `AZURE_STORAGE_CONNECTION_STRING` | yes | Presence enables the Azure Blob backend; without it uploads fall back to local disk inside the container (lost on revision swap). |
 | `AZURE_STORAGE_CONTAINER` | recommended | Defaults to `uploads`. Created automatically if missing. |
 | `DEMO_MODE` | must be unset/false | Server FATALs at boot if `true`. Trial deployments only. |
-| `INTERNAL_EMAIL_DOMAINS` | optional | CSV of staff email domains. Anyone outside is `isExternal=true` (B2B guest model). |
 | `AI_ENABLED` | optional | Default `false`. If you turn it on you must also set `AI_PROVIDER`, `AI_BASE_URL`, `AI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, and the encryption key above. |
 
 ### AOAI quota requests (T-7 days, parallel to image builds)

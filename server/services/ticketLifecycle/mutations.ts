@@ -331,13 +331,11 @@ export async function assignSupportTx(
     supportId: string;
     supportName: string;
     supportLang: string;
-    supportIsExternal: boolean;
   },
 ): Promise<{ supportId: string | null; participants: Participant[] }> {
   const participantJson = JSON.stringify({
     id: args.supportId,
     name: args.supportName,
-    isExternal: args.supportIsExternal,
   });
   const res = await tx.execute(sql`UPDATE tickets SET
     support_id = COALESCE(support_id, ${args.supportId}),

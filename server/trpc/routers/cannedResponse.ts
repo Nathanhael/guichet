@@ -64,7 +64,7 @@ export const cannedResponseRouter = router({
       sourceLang: langEnum.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       // Validate shortcut uniqueness within partner
       if (input.shortcut) {
         const existing = await db
@@ -151,7 +151,7 @@ export const cannedResponseRouter = router({
       }).strict().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       const [existing] = await db
         .select({
           id: cannedResponses.id,
@@ -250,7 +250,7 @@ export const cannedResponseRouter = router({
       langs: z.array(langEnum).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       if (!(await isCannedTranslationEnabled(ctx.user.partnerId))) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -394,7 +394,7 @@ export const cannedResponseRouter = router({
    */
   backfillUntranslated: partnerAdminProcedure
     .mutation(async ({ ctx }) => {
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       if (!(await isCannedTranslationEnabled(ctx.user.partnerId))) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -448,7 +448,7 @@ export const cannedResponseRouter = router({
   delete: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       await db
         .delete(cannedResponses)
         .where(and(eq(cannedResponses.id, input.id), eq(cannedResponses.partnerId, ctx.user.partnerId)));

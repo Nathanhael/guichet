@@ -48,7 +48,6 @@ const aliceActor: UserActor = {
   name: 'Alice',
   role: 'agent',
   isPlatformOperator: false,
-  isExternal: false,
   lang: 'en',
   partnerId: PARTNER_A,
 };
@@ -144,7 +143,7 @@ describe('messageLifecycle.edit', () => {
     await handle.db.insert(users).values({ id: USER_B, email: 'b@x.test', name: 'Bob' });
     const bobActor: UserActor = {
       kind: 'user', userId: USER_B, name: 'Bob', role: 'agent',
-      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
+      isPlatformOperator: false, lang: 'en', partnerId: PARTNER_B,
     };
 
     const result = await lifecycle.edit({
@@ -164,7 +163,7 @@ describe('messageLifecycle.edit', () => {
     await handle.db.insert(users).values({ id: USER_C, email: 'c@x.test', name: 'Carol' });
     const carolActor: UserActor = {
       kind: 'user', userId: USER_C, name: 'Carol', role: 'agent',
-      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+      isPlatformOperator: false, lang: 'en', partnerId: PARTNER_A,
     };
 
     const result = await lifecycle.edit({

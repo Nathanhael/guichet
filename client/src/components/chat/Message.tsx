@@ -8,7 +8,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Ghost, Sparkles } from 'lucide-react';
 import { useStoreShallow } from '../../store/useStore';
 import Avatar from '../ui/Avatar';
-import GuestBadge from '../GuestBadge';
 import ConfirmDialog from '../ConfirmDialog';
 import DeliveryStatus from './DeliveryStatus';
 import MessageContent from './MessageContent';
@@ -125,11 +124,6 @@ export default function Message({
   const isMine = message.senderId === user?.id;
   const isWhisper = !!message.whisper;
 
-  // Server-authoritative GUEST flag — denormalized onto the message at
-  // insert time (migration 0006). Works for historical senders in closed
-  // tickets as well as live chats; no presence-store lookup needed.
-  const isSenderExternal = !!message.senderIsExternal;
-
   const originalDisplayText = isDeleted ? (t('message_deleted')) : (message.text || '');
   // Translated text is always primary when available — UX decision 2026-05-03:
   // monolingual support staff couldn't read the original after the legacy
@@ -206,7 +200,6 @@ export default function Message({
             name={message.senderName || 'User'}
             src={message.senderAvatarUrl ?? null}
             size={24}
-            isExternal={!!message.senderIsExternal}
           />
         )}
       </div>
@@ -218,7 +211,6 @@ export default function Message({
             <span className="text-[12px] font-semibold text-[var(--color-ink)]">
               {message.senderName}
             </span>
-            <GuestBadge isExternal={isSenderExternal} />
             {isSupport && (
               <span className="text-[10px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] leading-none">
                 {t('support')}
@@ -236,7 +228,6 @@ export default function Message({
             <span className="text-[12px] font-medium text-[var(--color-ink-soft)]">
               {message.senderName}
             </span>
-            <GuestBadge isExternal={isSenderExternal} />
           </div>
         )}
 

@@ -94,12 +94,6 @@ export interface User {
   role: UserRole;
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
-  /**
-   * True when the user is an Azure B2B guest (external partner employee).
-   * Drives GUEST badge rendering and read-only handling in admin UI.
-   * Populated by the server from `users.isExternal` via `trpc.user.me`.
-   */
-  isExternal?: boolean;
   avatarUrl?: string;
   departments?: string[];
   dept?: string;
@@ -129,14 +123,6 @@ export interface Participant {
   name: string;
   role?: string;
   lang?: string;
-  /**
-   * Azure B2B guest flag snapshot at join time (denormalized on
-   * `tickets.participants`). Drives the amber ring around guest avatars
-   * in ChatHeader. Always written by `assignSupport`; kept optional only
-   * so legacy fixtures that don't include the field still parse (reseed
-   * to refresh). Falsy means not-a-guest.
-   */
-  isExternal?: boolean;
 }
 
 export interface Ticket {
@@ -180,13 +166,6 @@ export interface Message {
   senderRole: string;
   senderLang: string;
   /**
-   * Azure B2B guest flag denormalized from users.isExternal at insert time.
-   * Drives the GUEST badge in Message. Optional to stay backward
-   * compatible with older cached messages whose payloads were written
-   * before migration 0006 — treat undefined as false.
-   */
-  senderIsExternal?: boolean;
-  /**
    * Live avatar URL joined from users.avatarUrl at fetch time. Null when
    * the sender has no Entra photo synced or was deleted. Omitted on
    * optimistic/pending client-side messages.
@@ -229,8 +208,6 @@ export interface OnlineSupport {
   name: string;
   status: 'online' | 'away';
   role?: string;
-  /** Azure B2B guest flag — drives the GUEST badge in QueueSidebar + AdminTeam. */
-  isExternal?: boolean;
 }
 
 export interface RatingPromptData {

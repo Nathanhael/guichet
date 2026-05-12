@@ -64,11 +64,6 @@ Use break-glass only when one of these is true:
 - Reassign platform-operator role on a different user.
 - Disable or deconfigure affected SSO group mappings.
 - Inspect audit history and tenant status.
-- **Revoke an Azure B2B partner guest**: remove the user from the partner's
-  Azure security group (soft — takes effect on next login) or delete the
-  guest user in Azure AD (hard — takes effect on next token validation).
-  For immediate revoke, also call `trpc.user.revokeSessions` to kill any
-  active JWT. Background and invite flow in `docs/TENANT_IDENTITY_SPEC.md`.
 
 ## Required Follow-Up
 
@@ -82,7 +77,6 @@ After any break-glass use:
    - membership changes
    - tenant lifecycle actions
    - SSO mapping changes
-   - `sso.guest_multi_partner_rejected` (Azure B2B misconfiguration — a guest was assigned to more than one partner group)
 3. If the incident involved a suspected JWT-secret compromise, rotate
    `JWT_SECRET` (this invalidates every session in the platform).
 4. Document the incident and recovery timeline.

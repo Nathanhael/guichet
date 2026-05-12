@@ -65,7 +65,7 @@ export const webhookRouter = router({
       description: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       // SSRF protection: validate URL before registering
       await validateWebhookUrl(input.url);
@@ -100,7 +100,7 @@ export const webhookRouter = router({
       active: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       await verifyWebhookOwnership(input.id, actor.partnerId);
 
@@ -123,7 +123,7 @@ export const webhookRouter = router({
   regenerateSecret: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       await verifyWebhookOwnership(input.id, actor.partnerId);
 
@@ -139,7 +139,7 @@ export const webhookRouter = router({
   delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       await db
         .delete(webhooks)
@@ -183,7 +183,7 @@ export const webhookRouter = router({
   test: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       // Fetch the specific webhook (verifies ownership and gets secret/url)
       const rows = await db

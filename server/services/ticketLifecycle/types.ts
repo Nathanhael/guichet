@@ -102,7 +102,6 @@ export interface Participant {
   name: string;
   role?: string;
   lang?: string;
-  isExternal?: boolean;
 }
 
 /** Result data shape returned by `lifecycle.reclaim()`. */

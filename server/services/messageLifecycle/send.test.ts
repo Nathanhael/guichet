@@ -44,12 +44,12 @@ let lifecycle: MessageLifecycle;
 
 const aliceActor: UserActor = {
   kind: 'user', userId: USER_A, name: 'Alice', role: 'agent',
-  isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+  isPlatformOperator: false, lang: 'en', partnerId: PARTNER_A,
 };
 
 const supportActor: UserActor = {
   kind: 'user', userId: USER_SUPPORT, name: 'Sam', role: 'support',
-  isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+  isPlatformOperator: false, lang: 'en', partnerId: PARTNER_A,
 };
 
 async function seedBaseline(): Promise<void> {
@@ -120,7 +120,7 @@ describe('messageLifecycle.send', () => {
     await handle.db.insert(users).values({ id: USER_B, email: 'b@x.test', name: 'Bob' });
     const bobActor: UserActor = {
       kind: 'user', userId: USER_B, name: 'Bob', role: 'agent',
-      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
+      isPlatformOperator: false, lang: 'en', partnerId: PARTNER_B,
     };
 
     const result = await lifecycle.send({

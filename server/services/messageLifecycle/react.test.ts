@@ -42,7 +42,6 @@ const aliceActor: UserActor = {
   name: 'Alice',
   role: 'agent',
   isPlatformOperator: false,
-  isExternal: false,
   lang: 'en',
   partnerId: PARTNER_A,
 };
@@ -128,7 +127,6 @@ describe('messageLifecycle.react', () => {
       name: 'Bob',
       role: 'agent',
       isPlatformOperator: false,
-      isExternal: false,
       lang: 'en',
       partnerId: PARTNER_B,
     };
@@ -247,7 +245,6 @@ describe('messageLifecycle.react', () => {
       name: 'Bob',
       role: 'agent',
       isPlatformOperator: false,
-      isExternal: false,
       lang: 'en',
       partnerId: PARTNER_A,
     };

@@ -206,7 +206,7 @@ vi.mock('../services/businessHours.js', () => ({
 
 // Path matches the deep import that socket/handlers/{types,auth}.ts use after
 // Bundle A slice 7 — the auth barrel is intentionally bypassed there to keep
-// flipIsExternal's `db` import out of socket-handler test mock graphs.
+// db imports out of socket-handler test mock graphs.
 vi.mock('../services/auth/sessionRevocation.js', () => ({
   isRevoked: vi.fn(async () => false),
 }));

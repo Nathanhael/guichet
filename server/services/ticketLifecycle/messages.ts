@@ -4,9 +4,9 @@
  * `services/systemMessage.ts`, except every write goes through `tx`, so a
  * failure rolls back the whole lifecycle event.
  *
- * Sender-info denormalization (`isExternal`, `lang`, `role`) lives here so
- * call sites can't construct half-built whisper rows by reaching into the
- * messages table directly.
+ * Sender-info denormalization (`lang`, `role`) lives here so call sites
+ * can't construct half-built whisper rows by reaching into the messages
+ * table directly.
  */
 import crypto from 'node:crypto';
 
@@ -25,7 +25,6 @@ interface WhisperMessageArgs extends BaseMessageArgs {
   senderName: string;
   senderRole: string;
   senderLang: string;
-  senderIsExternal: boolean;
   text: string;
 }
 
@@ -33,7 +32,6 @@ interface AgentMessageArgs extends BaseMessageArgs {
   senderId: string;
   senderName: string;
   senderLang: string;
-  senderIsExternal: boolean;
   text: string;
   mediaUrl?: string;
 }
@@ -50,7 +48,6 @@ export interface SocketMessage {
   senderName: string;
   senderRole: string;
   senderLang: string;
-  senderIsExternal: boolean;
   text: string;
   originalText: string;
   whisper: boolean;
@@ -69,7 +66,6 @@ function toSocketMessage(args: {
   senderName: string;
   senderRole: string;
   senderLang: string;
-  senderIsExternal: boolean;
   text: string;
   whisper: boolean;
   system: boolean;
@@ -81,7 +77,6 @@ function toSocketMessage(args: {
     senderName: args.senderName,
     senderRole: args.senderRole,
     senderLang: args.senderLang,
-    senderIsExternal: args.senderIsExternal,
     text: args.text,
     originalText: args.text,
     whisper: args.whisper,
@@ -93,7 +88,7 @@ function toSocketMessage(args: {
   };
 }
 
-/** Insert a system-attributed message (never bears a GUEST badge). */
+/** Insert a system-attributed message. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertSystemMessageTx(tx: any, args: SystemMessageArgs): Promise<SocketMessage> {
   const id = crypto.randomUUID();
@@ -105,7 +100,6 @@ export async function insertSystemMessageTx(tx: any, args: SystemMessageArgs): P
     senderName: 'System',
     senderRole: 'admin',
     senderLang: 'en',
-    senderIsExternal: false,
     text: args.text,
     whisper: 0,
     system: 1,
@@ -120,7 +114,6 @@ export async function insertSystemMessageTx(tx: any, args: SystemMessageArgs): P
     senderName: 'System',
     senderRole: 'admin',
     senderLang: 'en',
-    senderIsExternal: false,
     text: args.text,
     whisper: false,
     system: true,
@@ -139,7 +132,6 @@ export async function insertAgentMessageTx(tx: any, args: AgentMessageArgs): Pro
     senderName: args.senderName,
     senderRole: 'agent',
     senderLang: args.senderLang,
-    senderIsExternal: args.senderIsExternal,
     text: args.text,
     mediaUrl: args.mediaUrl ?? null,
     whisper: 0,
@@ -155,7 +147,6 @@ export async function insertAgentMessageTx(tx: any, args: AgentMessageArgs): Pro
     senderName: args.senderName,
     senderRole: 'agent',
     senderLang: args.senderLang,
-    senderIsExternal: args.senderIsExternal,
     text: args.text,
     whisper: false,
     system: false,
@@ -174,7 +165,6 @@ export async function insertWhisperMessageTx(tx: any, args: WhisperMessageArgs):
     senderName: args.senderName,
     senderRole: args.senderRole,
     senderLang: args.senderLang,
-    senderIsExternal: args.senderIsExternal,
     text: args.text,
     whisper: 1,
     system: 0,
@@ -189,7 +179,6 @@ export async function insertWhisperMessageTx(tx: any, args: WhisperMessageArgs):
     senderName: args.senderName,
     senderRole: args.senderRole,
     senderLang: args.senderLang,
-    senderIsExternal: args.senderIsExternal,
     text: args.text,
     whisper: true,
     system: false,

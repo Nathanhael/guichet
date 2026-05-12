@@ -50,9 +50,7 @@ vi.mock('../../../utils/trpc', () => ({
     }),
     user: {
       me: {
-        // useIsExternalAdmin polls this; supply a non-external default so the
-        // hook resolves to false and the destructive-admin gate stays open.
-        useQuery: () => ({ data: { isExternal: false }, isLoading: false, error: null }),
+        useQuery: () => ({ data: {}, isLoading: false, error: null }),
       },
     },
     partner: {
@@ -112,10 +110,9 @@ vi.mock('../../../store/useStore', () => {
   // Mock state covers all keys read by the component tree:
   // - useStoreShallow in AdminCannedResponses itself (bionicReading, user)
   // - useStore default in BionicText (selectedLang)
-  // - useStore default in useIsExternalAdmin (user.isExternal)
   const state = {
     bionicReading: false,
-    user: { lang: 'en', isExternal: false },
+    user: { lang: 'en' },
     selectedLang: 'en',
   };
   return {

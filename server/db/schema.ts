@@ -79,11 +79,6 @@ export const users = pgTable('users', {
     monochromeMode?: boolean;
     focusMode?: boolean;
   }>(),
-  // True when the user is an Azure B2B guest (external partner employee invited into our tenant).
-  // Set at SSO callback from the `acct === 1` or `idp` claim. Drives UI GUEST badge and the
-  // `destructive_admin` capability gate in `services/auth/capabilities.ts` (which blocks B2B
-  // guests from destructive admin tRPC handlers + internal-admin reads).
-  isExternal: boolean('is_external').notNull().default(false),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
@@ -136,7 +131,7 @@ export const tickets = pgTable('tickets', {
   closedAt: timestamp('closed_at', { mode: 'string' }),
   closingNotes: text('closing_notes'),
   closedBy: text('closed_by'),
-  participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string; isExternal?: boolean }>>().default([]),
+  participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
 }, (table) => [
@@ -162,10 +157,6 @@ export const messages = pgTable('messages', {
   senderName: text('sender_name'),
   senderRole: text('sender_role'),
   senderLang: text('sender_lang'),
-  // Denormalized at insert time so historical messages can still render the
-  // GUEST badge in chat/Message without a live presence lookup. Sourced from
-  // `users.isExternal` via `findSenderInfo`. System messages are always false.
-  senderIsExternal: boolean('sender_is_external').notNull().default(false),
   text: text('text'),
   mediaUrl: text('media_url'),
   whisper: integer('whisper').default(0),

@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
-import { inArray } from 'drizzle-orm';
-import { db } from '../../db.js';
-import { users } from '../../db/schema.js';
 import { getAvailability } from '../../services/availability/index.js';
 
 export const statusRouter = router({
@@ -15,22 +12,11 @@ export const statusRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
       const onlineUsers = await getAvailability().advanced.onlineUsers(partnerId);
-      if (onlineUsers.length === 0) return [];
-      // Batch-fetch isExternal for the team so the client can render GUEST
-      // badges. One query for the whole team regardless of size — cheap, no
-      // N+1 risk.
-      const ids = onlineUsers.map((u) => u.userId);
-      const flagRows = await db
-        .select({ id: users.id, isExternal: users.isExternal })
-        .from(users)
-        .where(inArray(users.id, ids));
-      const externalById = new Map(flagRows.map((r) => [r.id, !!r.isExternal]));
       return onlineUsers.map((u) => ({
         userId: u.userId,
         name: u.name,
         role: u.role,
         status: u.status,
-        isExternal: externalById.get(u.userId) ?? false,
       }));
     }),
 

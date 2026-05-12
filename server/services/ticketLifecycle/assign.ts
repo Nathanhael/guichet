@@ -73,7 +73,6 @@ export async function runAssign(
       supportId: args.actor.userId,
       supportName: args.actor.name,
       supportLang: args.supportLang,
-      supportIsExternal: args.actor.isExternal,
     });
     assignedSupportId = out.supportId;
     participants = out.participants;

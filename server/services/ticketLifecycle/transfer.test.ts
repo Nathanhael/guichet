@@ -23,7 +23,6 @@ function actor(args: Partial<UserActor> & { userId: string; partnerId: string; n
     kind: 'user',
     role: 'support',
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
     ...args,
   };

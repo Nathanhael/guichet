@@ -4,7 +4,7 @@ import { Rooms } from '../../utils/rooms.js';
 import { requireIdentified, validatePayload, ticketPreviewSchema, type HandlerContext } from './types.js';
 import { requireActorTicketScope } from '../partnerScope.js';
 import { socketActor } from '../../services/ticketLifecycle/index.js';
-import { can } from '../../services/auth/capabilities.js';
+import { canUseSupportWorkflows } from '../../services/roles.js';
 
 /**
  * Notify any sockets that have a read-only preview open on this ticket
@@ -33,7 +33,7 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
     if (!requireIdentified(socket)) return;
     const actor = socketActor(socket);
     if (!actor) return;
-    if (!can(actor, 'use_support_workflows')) return;
+    if (!canUseSupportWorkflows(actor.role, actor.isPlatformOperator)) return;
     const parsed = validatePayload(socket, ticketPreviewSchema, data);
     if (!parsed) return;
     const { ticketId } = parsed;

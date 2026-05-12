@@ -24,7 +24,6 @@ const buildCtx = (overrides: {
   membershipId?: string;
   departments?: string[];
   isPlatformOperator?: boolean;
-  isExternal?: boolean;
 }): Context => ({
   req: {} as Context['req'],
   res: {} as Context['res'],
@@ -35,7 +34,6 @@ const buildCtx = (overrides: {
     membershipId: overrides.membershipId,
     departments: overrides.departments ?? [],
     isPlatformOperator: overrides.isPlatformOperator ?? false,
-    isExternal: overrides.isExternal ?? false,
   },
 });
 
@@ -48,7 +46,6 @@ describe('actorFactory', () => {
     expect(a.role).toBe('agent');
     expect(typeof a.partnerId).toBe('string');
     expect(a.isPlatformOperator).toBe(false);
-    expect(a.isExternal).toBe(false);
     expect(typeof a.lang).toBe('string');
   });
 
@@ -56,14 +53,12 @@ describe('actorFactory', () => {
     const a = actorFactory({
       userId: 'u-7',
       role: 'admin',
-      isExternal: true,
       partnerId: 'p-99',
       lang: 'fr',
       name: 'Alice',
     });
     expect(a.userId).toBe('u-7');
     expect(a.role).toBe('admin');
-    expect(a.isExternal).toBe(true);
     expect(a.partnerId).toBe('p-99');
     expect(a.lang).toBe('fr');
     expect(a.name).toBe('Alice');
@@ -84,13 +79,6 @@ describe('trpcActor — happy path', () => {
     expect(a.userId).toBe('u-1');
     expect(a.role).toBe('admin');
     expect(a.partnerId).toBe('p-1');
-    expect(a.isExternal).toBe(false);
-  });
-
-  it('preserves isExternal=true from context', () => {
-    const ctx = buildCtx({ id: 'u-2', isExternal: true });
-    const a = trpcActor(ctx);
-    expect(a.isExternal).toBe(true);
   });
 });
 
@@ -111,26 +99,9 @@ describe('trpcActor — rejection modes', () => {
         membershipId: undefined,
         departments: [],
         isPlatformOperator: false,
-        isExternal: false,
       },
     } as Context;
     expect(() => trpcActor(ctx)).toThrow(TRPCError);
-  });
-
-  it('throws TRPCError FORBIDDEN when capability check fails', () => {
-    const ctx = buildCtx({ id: 'u-1', role: 'agent' });
-    expect(() => trpcActor(ctx, { capability: 'manage_tenant' })).toThrow(TRPCError);
-  });
-
-  it('throws TRPCError FORBIDDEN when destructive_admin requested by B2B guest', () => {
-    const ctx = buildCtx({ id: 'u-1', role: 'admin', isExternal: true });
-    expect(() => trpcActor(ctx, { capability: 'destructive_admin' })).toThrow(TRPCError);
-  });
-
-  it('returns successfully when capability check passes', () => {
-    const ctx = buildCtx({ id: 'u-1', role: 'admin' });
-    const a = trpcActor(ctx, { capability: 'manage_tenant' });
-    expect(a.role).toBe('admin');
   });
 });
 
@@ -142,7 +113,6 @@ describe('socketActor — happy path', () => {
       role: 'support',
       name: 'Bob',
       partnerId: 'p-1',
-      isExternal: false,
       isPlatformOperator: false,
       lang: 'en',
     });
@@ -151,22 +121,6 @@ describe('socketActor — happy path', () => {
     expect(a?.userId).toBe('u-1');
     expect(a?.role).toBe('support');
     expect(a?.partnerId).toBe('p-1');
-    expect(a?.isExternal).toBe(false);
-  });
-
-  it('preserves isExternal=true from socket.data', () => {
-    const s = buildSocket({
-      identified: true,
-      userId: 'u-1',
-      role: 'admin',
-      name: 'Carol',
-      partnerId: 'p-1',
-      isExternal: true,
-      isPlatformOperator: false,
-      lang: 'en',
-    });
-    const a = socketActor(s);
-    expect(a?.isExternal).toBe(true);
   });
 });
 
@@ -184,57 +138,11 @@ describe('socketActor — rejection modes', () => {
       userId: 'u-1',
       role: 'support',
       name: 'Bob',
-      isExternal: false,
       isPlatformOperator: false,
       lang: 'en',
     });
     const a = socketActor(s);
     expect(a).toBeNull();
     expect(s.__emitted[0]?.event).toBe('error');
-  });
-
-  it('returns null and emits error when capability check fails', () => {
-    const s = buildSocket({
-      identified: true,
-      userId: 'u-1',
-      role: 'agent',
-      name: 'Alice',
-      partnerId: 'p-1',
-      isExternal: false,
-      isPlatformOperator: false,
-      lang: 'en',
-    });
-    const a = socketActor(s, { capability: 'manage_tenant' });
-    expect(a).toBeNull();
-    expect(s.__emitted[0]?.event).toBe('error');
-  });
-
-  it('returns null when destructive_admin requested by B2B guest', () => {
-    const s = buildSocket({
-      identified: true,
-      userId: 'u-1',
-      role: 'admin',
-      name: 'Bob',
-      partnerId: 'p-1',
-      isExternal: true,
-      isPlatformOperator: false,
-      lang: 'en',
-    });
-    const a = socketActor(s, { capability: 'destructive_admin' });
-    expect(a).toBeNull();
-  });
-
-  it('treats missing isExternal field as false (legacy token rollout)', () => {
-    const s = buildSocket({
-      identified: true,
-      userId: 'u-1',
-      role: 'admin',
-      name: 'Bob',
-      partnerId: 'p-1',
-      isPlatformOperator: false,
-      lang: 'en',
-    });
-    const a = socketActor(s);
-    expect(a?.isExternal).toBe(false);
   });
 });

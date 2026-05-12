@@ -15,8 +15,6 @@ export interface AvatarProps extends Omit<HTMLAttributes<HTMLDivElement>, 'color
   statusDot?: 'online' | 'away' | 'offline' | null;
   /** Alt text for the image; defaults to name. */
   alt?: string;
-  /** Draw a dashed amber ring to flag Azure B2B guests / external users. */
-  isExternal?: boolean;
 }
 
 function initialsOf(name: string): string {
@@ -60,7 +58,6 @@ export default function Avatar({
   color,
   statusDot,
   alt,
-  isExternal,
   className = '',
   style,
   ...rest
@@ -87,8 +84,6 @@ export default function Avatar({
         borderRadius: radius,
         background: showImg ? undefined : bg,
         fontSize: font,
-        outline: isExternal ? '2px dashed var(--color-accent-amber)' : undefined,
-        outlineOffset: isExternal ? 1 : undefined,
         ...style,
       }}
       {...rest}

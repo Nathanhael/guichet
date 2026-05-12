@@ -1,9 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
-// Deep path on purpose — the auth barrel transitively evaluates flipIsExternal's
-// production wiring (`import { db } from ...`), and several socket-handler tests
-// mock `db.js` partially. Importing isRevoked from the deep file keeps tests
+// Deep path on purpose — several socket-handler tests mock `db.js` partially.
+// Importing isRevoked from the deep file keeps tests
 // from having to extend their db mock with a full barrel surface. Same pattern
 // as services/ticketLifecycle/ uses for the canonical actor.
 import { isRevoked } from '../../services/auth/sessionRevocation.js';
@@ -191,22 +190,12 @@ export function validatePayload<T>(socket: Socket, schema: z.ZodType<T>, data: u
 export interface Participant {
   id: string;
   name: string;
-  /**
-   * Azure B2B guest flag snapshot at join time. Denormalized onto
-   * `tickets.participants` JSONB so ChatHeader can render the amber ring
-   * on guest participants regardless of live presence. Optional for
-   * backward compatibility with participants written before the B2B
-   * plumbing landed — treat undefined as false.
-   */
-  isExternal?: boolean;
 }
 
 export interface SenderInfo {
   name: string;
   role: string;
   lang: string;
-  /** Azure B2B guest flag — denormalized onto messages at insert for GUEST-badge rendering. */
-  isExternal: boolean;
 }
 
 // ─── Socket-Level Rate Limiting ───────────────────────────────────────────────

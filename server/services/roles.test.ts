@@ -80,7 +80,6 @@ const userActor = (overrides: Partial<UserActor> = {}): UserActor => ({
   role: 'admin',
   partnerId: 'p-1',
   isPlatformOperator: false,
-  isExternal: false,
   lang: 'en',
   ...overrides,
 });

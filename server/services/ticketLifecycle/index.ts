@@ -44,9 +44,8 @@ export { applyEffects } from './applyEffects.js';
 // Actor builders + types are owned by `services/auth`. Re-exported here as
 // the canonical lifecycle public surface; `SYSTEM_ACTOR` is aliased to the
 // legacy lowercase `systemActor` name so existing callers continue to
-// compile. Deep imports rather than the auth barrel — the barrel
-// transitively evaluates `flipIsExternal`'s production wiring (which imports
-// `db`), which would force every lifecycle-importing test to mock `db` too.
+// compile. Deep imports rather than the auth barrel to avoid forcing every
+// lifecycle-importing test to mock `db`.
 export { socketActor } from '../auth/actor.js';
 export { SYSTEM_ACTOR as systemActor, isUserActor } from '../auth/types.js';
 export type { Actor, UserActor, SystemActor } from '../auth/types.js';

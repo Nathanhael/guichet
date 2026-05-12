@@ -18,7 +18,6 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 ### Standard Login
 - Access the platform via `http://localhost:3001` (or your production URL).
 - Click **"Sign in with Microsoft"** and complete the Azure OIDC flow.
-- Partner employees without a corporate tenant can be invited as Azure B2B guests and sign in with their home IdP (Microsoft, Google, or another federated provider).
 - No local passwords. MFA is enforced at the Azure tenant level, not by Guichet.
 
 ### Lost Access
@@ -69,7 +68,7 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 Partner Admins use the **AdminView** to manage their local workspace. The default tab list:
 
 - **Dashboard Tab**: Multi-zone partner dashboard — Scorecard (KPIs), Staffing fit (heatmap of agent coverage vs ticket volume), Trends (time-series charts), Department + Staff breakdowns (sortable tables). Onboarding mode runs first if the partner has no traffic yet.
-- **Team Tab**: Read-only roster of partner members, sourced from Azure group mappings. External (Azure B2B guest) admins show a `GUEST` badge — they retain admin reads but are blocked from destructive mutations (webhook CRUD + secret rotation, partner department + SLA edits, label CRUD, canned-response CRUD) and from `audit_read` reads (admin roster details + audit-log actor identities). Have a full-rights admin perform those actions or promote the user internally if that's the intent. Membership add/remove/role-change happens in Azure.
+- **Team Tab**: Read-only roster of partner members, sourced from Azure group mappings. Membership add/remove/role-change happens in Azure.
 - **Departments Tab**: Create and update the names and descriptions of support departments. Configure per-department first-response SLA (toggle + threshold minutes + warn%).
 - **Tickets Tab**: Browse and manage all partner tickets.
 - **Archive Tab**: Browse closed-ticket archive entries, with message-count summaries and the partner-scoped audit log.

@@ -77,7 +77,6 @@ export async function buildAuthToken(input: {
   partnerId?: string;
   membershipId?: string;
   isPlatformOperator: boolean;
-  isExternal: boolean;
 }): Promise<string> {
   const jti = crypto.randomUUID();
   const expiresIn = config.ACCESS_TOKEN_EXPIRY || '15m';
@@ -89,7 +88,6 @@ export async function buildAuthToken(input: {
       partnerId: input.partnerId,
       membershipId: input.membershipId,
       isPlatformOperator: input.isPlatformOperator,
-      isExternal: input.isExternal,
     })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -104,10 +102,6 @@ export function buildAuthResponse(input: {
     email: string;
     lang: string | null;
     isPlatformOperator: boolean | null;
-    // Azure B2B guest flag. Optional for backward compatibility with call
-    // sites that haven't been updated yet; omitted/null is treated as `false`
-    // (i.e. internal staff by default).
-    isExternal?: boolean | null;
     accessibilityPrefs?: Record<string, unknown> | null;
     avatarUrl?: string | null;
   };
@@ -123,7 +117,6 @@ export function buildAuthResponse(input: {
       email: input.user.email,
       lang: input.user.lang,
       isPlatformOperator: !!input.user.isPlatformOperator,
-      isExternal: !!input.user.isExternal,
       accessibilityPrefs: input.user.accessibilityPrefs ?? null,
       avatarUrl: input.user.avatarUrl ?? null,
     },

@@ -9,7 +9,6 @@ import ErrorBox from './ErrorBox';
 import Toast from '../Toast';
 import FieldError from '../FieldError';
 import { webhookCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
-import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 const ALL_EVENTS = [
   'ticket.created',
@@ -54,9 +53,6 @@ function EventChips({ events, selected, onToggle }: { events: readonly string[];
 
 export default function AdminWebhooks() {
   const t = useT();
-  const isExternal = useIsExternalAdmin();
-  const guestTooltip = t('guest_admin_disabled_tooltip');
-  const guestTooltipShort = t('guest_admin_disabled_tooltip_short');
 
   const [showCreate, setShowCreate] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -166,10 +162,8 @@ export default function AdminWebhooks() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreate(!showCreate)}
-            disabled={isExternal}
-            aria-disabled={isExternal || undefined}
-            title={isExternal ? guestTooltip : undefined}
-            data-guest-disabled={isExternal || undefined}
+            disabled={false}
+            title={undefined}
             className={PRIMARY_BTN}
           >
             <Plus className="h-3.5 w-3.5" /> {t('wh_new')}
@@ -243,11 +237,9 @@ export default function AdminWebhooks() {
             <button onClick={() => setShowCreate(false)} className={SECONDARY_BTN}>{t('cancel')}</button>
             <button
               onClick={addHook}
-              disabled={isExternal || !newUrl.trim() || newEvents.length === 0 || createMutation.isPending}
-              aria-disabled={isExternal || undefined}
-              title={isExternal ? guestTooltip : undefined}
-              data-guest-disabled={isExternal || undefined}
-              className={PRIMARY_BTN}
+              disabled={!newUrl.trim() || newEvents.length === 0 || createMutation.isPending}
+                title={undefined}
+                className={PRIMARY_BTN}
             >
               <Plus className="h-3.5 w-3.5" /> {createMutation.isPending ? t('creating') : t('create')}
             </button>
@@ -291,11 +283,9 @@ export default function AdminWebhooks() {
                     </button>
                     <button
                       onClick={saveEdit}
-                      disabled={isExternal || !editUrl.trim() || editEvents.length === 0 || updateMutation.isPending}
-                      aria-disabled={isExternal || undefined}
-                      title={isExternal ? guestTooltip : undefined}
-                      data-guest-disabled={isExternal || undefined}
-                      className={PRIMARY_BTN}
+                      disabled={!editUrl.trim() || editEvents.length === 0 || updateMutation.isPending}
+                                title={undefined}
+                                className={PRIMARY_BTN}
                     >
                       <Check className="h-3 w-3" /> {updateMutation.isPending ? t('saving_ellipsis') : t('save')}
                     </button>
@@ -321,51 +311,41 @@ export default function AdminWebhooks() {
                       </span>
                       <button
                         onClick={() => updateMutation.mutate({ id: h.id, active: !h.active })}
-                        disabled={isExternal}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={ICON_BTN}
-                        title={isExternal ? guestTooltip : (h.active ? t('wh_pause') : t('wh_activate'))}
+                        disabled={false}
+                                                className={ICON_BTN}
+                        title={h.active ? t('wh_pause') : t('wh_activate')}
                       >
                         {h.active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
                       <button
                         onClick={() => testMutation.mutate({ id: h.id })}
-                        disabled={isExternal || testMutation.isPending}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={ICON_BTN}
-                        title={isExternal ? guestTooltip : t('wh_test')}
+                        disabled={testMutation.isPending}
+                                                className={ICON_BTN}
+                        title={t('wh_test')}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => regenMutation.mutate({ id: h.id })}
-                        disabled={isExternal || regenMutation.isPending}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={ICON_BTN}
-                        title={isExternal ? guestTooltipShort : t('wh_regenerate_secret')}
+                        disabled={regenMutation.isPending}
+                                                className={ICON_BTN}
+                        title={t('wh_regenerate_secret')}
                       >
                         <KeyRound className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => startEdit(h)}
-                        disabled={isExternal}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={ICON_BTN}
-                        title={isExternal ? guestTooltip : t('edit')}
+                        disabled={false}
+                                                className={ICON_BTN}
+                        title={t('edit')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => deleteMutation.mutate({ id: h.id })}
-                        disabled={isExternal || deleteMutation.isPending}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={ICON_BTN}
-                        title={isExternal ? guestTooltip : t('wh_delete')}
+                        disabled={deleteMutation.isPending}
+                                                className={ICON_BTN}
+                        title={t('wh_delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

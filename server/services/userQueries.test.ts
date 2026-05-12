@@ -46,29 +46,21 @@ describe('userQueries', () => {
   });
 
   describe('findSenderInfo', () => {
-    it('returns joined user+membership info including isExternal', async () => {
-      const mock = { name: 'Bob', role: 'support', lang: 'en', isExternal: false };
+    it('returns joined user+membership info', async () => {
+      const mock = { name: 'Bob', role: 'support', lang: 'en' };
       const chain = { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([mock]) };
       vi.mocked(db.select).mockReturnValue(chain as never);
       const result = await findSenderInfo('u1', 'p1');
       expect(result).toEqual(mock);
     });
-
-    it('propagates isExternal=true for Azure B2B guests', async () => {
-      const mock = { name: 'Jane', role: 'admin', lang: 'en', isExternal: true };
-      const chain = { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([mock]) };
-      vi.mocked(db.select).mockReturnValue(chain as never);
-      const result = await findSenderInfo('u-guest', 'p1');
-      expect(result?.isExternal).toBe(true);
-    });
   });
 
   describe('findUserName', () => {
-    it('returns user name + isExternal', async () => {
-      const chain = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([{ name: 'Carol', isExternal: false }]) };
+    it('returns user name', async () => {
+      const chain = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([{ name: 'Carol' }]) };
       vi.mocked(db.select).mockReturnValue(chain as never);
       const result = await findUserName('u1');
-      expect(result).toEqual({ name: 'Carol', isExternal: false });
+      expect(result).toEqual({ name: 'Carol' });
     });
   });
 

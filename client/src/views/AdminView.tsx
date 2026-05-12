@@ -1,7 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
-import { useIsExternalAdmin } from '../hooks/useIsExternalAdmin';
 import { useT } from '../i18n';
 import UserMenuChip from '../components/ui/UserMenuChip';
 import { NavButton, NavGroupLabel } from '../components/ui/SidebarNav';
@@ -69,15 +68,6 @@ function readInitialWidth(): number {
   return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
 }
 
-// Tabs hidden from Azure B2B guest admins. Tenant-config surfaces and
-// internal-actor identity stay behind the destructive_admin gate.
-const HIDDEN_FOR_GUEST: ReadonlySet<AdminTab> = new Set<AdminTab>([
-  'audit_log',
-  'ai_customization',
-  'team',
-  'departments',
-]);
-
 export default function AdminView() {
   const { user, memberships, activeMembershipId } = useStoreShallow(s => ({
     user: s.user,
@@ -85,7 +75,6 @@ export default function AdminView() {
     activeMembershipId: s.activeMembershipId,
   }));
   const t = useT();
-  const isGuest = useIsExternalAdmin();
   const [view, setView] = useState<AdminTab>('dashboard');
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -117,10 +106,6 @@ export default function AdminView() {
       document.removeEventListener('mouseup', handleUp);
     };
   }, []);
-
-  useEffect(() => {
-    if (isGuest && HIDDEN_FOR_GUEST.has(view)) setView('dashboard');
-  }, [isGuest, view]);
 
   if (!user) return null;
 
@@ -160,26 +145,22 @@ export default function AdminView() {
             <div className="flex flex-col gap-0.5">
               {navItem('tickets', t('active_tickets'), <MessageSquare className="h-4 w-4" />)}
               {navItem('archive', t('archive'), <Archive className="h-4 w-4" />)}
-              {!isGuest && navItem('audit_log', 'Audit Log', <FileText className="h-4 w-4" />)}
+              {navItem('audit_log', 'Audit Log', <FileText className="h-4 w-4" />)}
               {navItem('feedback', t('feedback_and_ratings'), <Smile className="h-4 w-4" />)}
             </div>
 
-            {!isGuest && (
-              <>
-                <NavGroupLabel>Team</NavGroupLabel>
-                <div className="flex flex-col gap-0.5">
-                  {navItem('team', 'Team', <Users className="h-4 w-4" />)}
-                  {navItem('departments', 'Departments', <Building2 className="h-4 w-4" />)}
-                </div>
-              </>
-            )}
+            <NavGroupLabel>Team</NavGroupLabel>
+            <div className="flex flex-col gap-0.5">
+              {navItem('team', 'Team', <Users className="h-4 w-4" />)}
+              {navItem('departments', 'Departments', <Building2 className="h-4 w-4" />)}
+            </div>
 
             <NavGroupLabel>Configuration</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
               {navItem('business_hours', 'Business Hours', <Clock className="h-4 w-4" />)}
               {navItem('labels', t('labels'), <Tag className="h-4 w-4" />)}
               {navItem('canned_responses', t('canned_responses'), <Zap className="h-4 w-4" />)}
-              {!isGuest && navItem('ai_customization', t('admin_tab_ai'), <Sparkles className="h-4 w-4" />)}
+              {navItem('ai_customization', t('admin_tab_ai'), <Sparkles className="h-4 w-4" />)}
               {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
             </div>
           </nav>
@@ -200,16 +181,16 @@ export default function AdminView() {
         >
           {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><DashboardView /></Suspense>}
           {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
-          {view === 'team' && !isGuest && <AdminTeam />}
+          {view === 'team' && <AdminTeam />}
           {view === 'business_hours' && <AdminBusinessHours />}
-          {view === 'departments' && !isGuest && <AdminDepartments />}
+          {view === 'departments' && <AdminDepartments />}
           {view === 'tickets' && <AdminTickets />}
           {view === 'archive' && <AdminArchive />}
-          {view === 'audit_log' && !isGuest && <AdminAuditLog />}
+          {view === 'audit_log' && <AdminAuditLog />}
           {view === 'feedback' && <AdminFeedback />}
           {view === 'labels' && <AdminLabels />}
           {view === 'canned_responses' && <AdminCannedResponses />}
-          {view === 'ai_customization' && !isGuest && <AdminAi />}
+          {view === 'ai_customization' && <AdminAi />}
           {/* DISABLED_FEATURE: Knowledge Base, Webhooks — tab panels hidden until production-ready */}
         </main>
       </div>

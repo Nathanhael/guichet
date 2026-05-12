@@ -72,7 +72,6 @@ async function main() {
         email: a.email,
         lang: a.lang,
         isPlatformOperator: false,
-        isExternal: false,
         accessibilityPrefs: {},
       })
       .onConflictDoNothing();

@@ -28,7 +28,6 @@ function mockActor(partnerId: string): UserActor {
     role: 'support',
     partnerId,
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
   };
 }

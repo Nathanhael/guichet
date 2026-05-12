@@ -8,11 +8,9 @@ import FieldError from '../FieldError';
 import Toast from '../Toast';
 import { LABEL_COLORS as COLORS, COLOR_BG_MAP } from '../../utils/labelColors';
 import { labelCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
-import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 export default function AdminLabels() {
   const t = useT();
-  const isGuest = useIsExternalAdmin();
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState<typeof COLORS[number]['key']>('indigo');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -112,8 +110,7 @@ export default function AdminLabels() {
       <ErrorBox error={error} />
 
       {/* Create new label */}
-      {!isGuest && (
-        <div className={`${CARD} p-5 mb-6`}>
+      <div className={`${CARD} p-5 mb-6`}>
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label')}</h3>
           <div className="flex items-end gap-4 flex-wrap">
             <div className="flex-1 min-w-[200px]">
@@ -157,8 +154,7 @@ export default function AdminLabels() {
               {createMutation.isPending ? (t('adding_label')) : (t('add_label'))}
             </button>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Labels list */}
       <div className={`${CARD} overflow-hidden`}>
@@ -232,8 +228,6 @@ export default function AdminLabels() {
                   </div>
                   <div className="px-4 py-3 text-[14px] font-medium text-[var(--color-ink)] flex items-center">{l.name}</div>
                   <div className="px-4 py-3 flex items-center gap-1">
-                    {!isGuest && (
-                      <>
                         <button
                           onClick={() => startEdit(l.id, l.name, l.color)}
                           className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
@@ -251,8 +245,6 @@ export default function AdminLabels() {
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      </>
-                    )}
                   </div>
                 </>
               )}

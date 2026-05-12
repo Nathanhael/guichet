@@ -167,7 +167,6 @@ export async function runCreate(
         senderId: args.actor.userId,
         senderName: agentName,
         senderLang: args.agentLang,
-        senderIsExternal: args.actor.isExternal,
         text: guardedText,
         mediaUrl: args.mediaUrl,
       });

@@ -4,7 +4,7 @@ import { Rooms } from '../../utils/rooms.js';
 import { getAvailability } from '../../services/availability/index.js';
 import { requireActorTicketScopeWith } from '../partnerScope.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
-import { can } from '../../services/auth/capabilities.js';
+import { canUseSupportWorkflows } from '../../services/roles.js';
 
 import {
   findTicketForJoin,
@@ -12,7 +12,6 @@ import {
 } from '../../services/ticketQueries.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
-import { findUserName } from '../../services/userQueries.js';
 import { prewarmHistoryTranslations } from '../../services/ai/index.js';
 import {
   requireIdentified,
@@ -40,7 +39,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const baseActor = socketActor(socket);
       if (!baseActor) return;
 
-      if (!can(baseActor, 'use_support_workflows')) {
+      if (!canUseSupportWorkflows(baseActor.role, baseActor.isPlatformOperator)) {
         return socket.emit('error', { message: 'Not authorized to join tickets' });
       }
 
@@ -94,16 +93,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         if (!primaryValid) ghostHealPreviousSupportId = ticket.supportId;
       }
 
-      // Denormalize the joiner's B2B-guest flag onto tickets.participants
-      // — lets ChatHeader flag offline guests without a live presence
-      // lookup. findUserName is a cheap single-row read.
-      const joinerInfo = await findUserName(supportId);
-      const joinActor = { ...baseActor, isExternal: !!joinerInfo?.isExternal };
-
       const result = await ctx.lifecycle.assign({
         ticketId,
         partnerId: callerPartnerId,
-        actor: joinActor,
+        actor: baseActor,
         supportLang,
         ghostHealPreviousSupportId,
       });
@@ -176,7 +169,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     try {
       const actor = socketActor(socket);
       if (!actor) return;
-      if (!can(actor, 'use_support_workflows')) return;
+      if (!canUseSupportWorkflows(actor.role, actor.isPlatformOperator)) return;
 
       const supportId = actor.userId;
       const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketParticipants);

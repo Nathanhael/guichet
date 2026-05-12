@@ -67,7 +67,6 @@ export default function LoginView() {
         'expired': t('login_failed'),
         'unauthorized': t('login_failed'),
         'server_error': t('login_failed'),
-        'guest_multi_partner_mapping': t('sso_guest_multi_partner_message'),
         'invite_expired': t('sso_invite_expired_message'),
       };
       // eslint-disable-next-line react-hooks/set-state-in-effect

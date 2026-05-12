@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useT } from '../../i18n';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
-import GuestBadge from '../GuestBadge';
 import SectionLabel from '../ui/SectionLabel';
 import type { OnlineSupport } from '../../types';
 
@@ -47,9 +46,8 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
                     {getInitials(agent.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-semibold text-[var(--color-ink)] truncate flex items-center gap-1.5">
+                    <div className="text-[12px] font-semibold text-[var(--color-ink)] truncate">
                       <span className="truncate">{agent.name}</span>
-                      <GuestBadge isExternal={agent.isExternal} />
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">

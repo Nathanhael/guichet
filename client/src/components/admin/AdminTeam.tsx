@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
-import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 import { useT } from '../../i18n';
-import { X, Search, Users, ChevronLeft, ChevronRight, Moon, FileText, Info, Pencil } from 'lucide-react';
+import { X, Search, Users, ChevronLeft, ChevronRight, FileText, Info, Pencil } from 'lucide-react';
 import Toast from '../Toast';
 import MemberAuditDrawer from './MemberAuditDrawer';
 import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
@@ -28,11 +27,8 @@ export default function AdminTeam() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
-  const [dormantOnly, setDormantOnly] = useState(false);
-  const [guestsOnly, setGuestsOnly] = useState(false);
   const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
   const [editingDepts, setEditingDepts] = useState<{ membershipId: string; name: string; current: string[] } | null>(null);
-  const isExternal = useIsExternalAdmin();
   const LIMIT = 12;
 
   const { data, isLoading } = trpc.partner.listMembers.useQuery(
@@ -42,9 +38,6 @@ export default function AdminTeam() {
       search: search.trim() || undefined,
       role: roleFilter || undefined,
       excludeAdmin: false,
-      excludePending: true,
-      dormant: dormantOnly || undefined,
-      isExternal: guestsOnly || undefined,
     },
     { enabled: !!activeMembershipId, placeholderData: keepPreviousData }
   );
@@ -57,38 +50,19 @@ export default function AdminTeam() {
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
   const agentCount = stats?.agents ?? 0;
-  const dormantCount = stats?.dormant ?? 0;
-  const guestsCount = stats?.guests ?? 0;
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
-    setDormantOnly(false);
-    setGuestsOnly(false);
-    setPage(0);
-  };
-
-  const handleDormantFilter = () => {
-    setRoleFilter('');
-    setGuestsOnly(false);
-    setDormantOnly(!dormantOnly);
-    setPage(0);
-  };
-
-  const handleGuestsFilter = () => {
-    setRoleFilter('');
-    setDormantOnly(false);
-    setGuestsOnly(!guestsOnly);
     setPage(0);
   };
 
   const pillBase = 'h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors whitespace-nowrap';
   const filters: Array<{ key: string; label: string; count: number; active: boolean; handler: () => void }> = [
-    { key: 'all', label: t('all'), count: total, active: !roleFilter && !dormantOnly && !guestsOnly, handler: () => handleRoleFilter('') },
+    { key: 'all', label: t('all'), count: total, active: !roleFilter, handler: () => handleRoleFilter('') },
     { key: 'support', label: t('support'), count: supportCount, active: roleFilter === 'support', handler: () => handleRoleFilter('support') },
     { key: 'agents', label: t('filter_agents'), count: agentCount, active: roleFilter === 'agent', handler: () => handleRoleFilter('agent') },
-    { key: 'guests', label: t('filter_guests_b2b'), count: guestsCount, active: guestsOnly, handler: handleGuestsFilter },
   ];
 
   return (
@@ -103,23 +77,6 @@ export default function AdminTeam() {
               {t('team_management_desc')}
             </p>
           </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-          {dormantCount > 0 && (
-            <button
-              onClick={handleDormantFilter}
-              title={t('dormant_guest_review_tooltip')}
-              className={`h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] text-[12px] font-medium transition-colors whitespace-nowrap border ${
-                dormantOnly
-                  ? 'bg-[var(--color-accent-amber)] text-white border-[var(--color-accent-amber)]'
-                  : 'border-[var(--color-accent-amber)] text-[var(--color-accent-amber)] hover:bg-[color-mix(in_srgb,var(--color-accent-amber)_14%,transparent)]'
-              }`}
-            >
-              <Moon className="h-3.5 w-3.5" aria-hidden />
-              {dormantCount} {t(dormantCount === 1 ? 'stale_guest_singular' : 'stale_guest_plural')}
-            </button>
-          )}
         </div>
       </div>
 
@@ -143,9 +100,8 @@ export default function AdminTeam() {
       </div>
 
       {/* Memberships are Azure-managed: roles + access come from SSO group
-          mappings, B2B guests are provisioned in Entra. This panel is a
-          read-only roster — to grant, change, or revoke access, the platform
-          admin updates Azure group assignments. */}
+          mappings. This panel is a read-only roster — to grant, change, or
+          revoke access, the platform admin updates Azure group assignments. */}
       <div
         role="note"
         className="flex items-start gap-2 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2"
@@ -255,37 +211,24 @@ export default function AdminTeam() {
                             <span title={member.email || undefined} className="text-[13px] font-medium text-[var(--color-ink)] truncate">{member.name}</span>
                           </div>
                           <div className="flex flex-col gap-0.5 mt-0.5">
-                            {member.isExternal && (
-                              <span className="text-[11px] font-mono text-[var(--color-ink-muted)] truncate">{member.email}</span>
+                            {member.lastActiveAt && (
+                              <span className="text-[11px] text-[var(--color-ink-muted)]">
+                                {t('last_active_on').replace('{date}', new Date(member.lastActiveAt).toLocaleDateString())}
+                              </span>
                             )}
-                            <div className="flex items-center gap-2">
-                              {member.isExternal && !member.externalId && !member.lastActiveAt ? (
-                                <span className="inline-flex items-center px-1.5 h-4 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[10px] font-medium text-[var(--color-accent)]">{t('invite_pending_pill')}</span>
-                              ) : member.lastActiveAt && (
-                                <span className="text-[11px] text-[var(--color-ink-muted)]">
-                                  {t('last_active_on').replace('{date}', new Date(member.lastActiveAt).toLocaleDateString())}
-                                </span>
-                              )}
-                            </div>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] text-[11px] font-medium capitalize ${
-                          member.isExternal
-                            ? 'bg-[color-mix(in_srgb,var(--color-accent-amber)_18%,transparent)] text-[var(--color-accent-amber)]'
-                            : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink)]'
-                        }`}
-                      >
-                        {member.isExternal ? t('external_role_prefix').replace('{role}', member.role) : member.role}
+                      <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] text-[11px] font-medium capitalize bg-[var(--color-bg-elevated)] text-[var(--color-ink)]">
+                        {member.role}
                       </span>
                     </td>
                     <td className="px-4 py-2">
                       {member.role === 'agent' ? (
                         <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('selects_per_ticket')}</span>
-                      ) : member.role === 'support' && !isExternal ? (
+                      ) : member.role === 'support' ? (
                         <button
                           type="button"
                           onClick={() => setEditingDepts({

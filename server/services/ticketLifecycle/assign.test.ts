@@ -18,7 +18,6 @@ function actor(args: Partial<UserActor> & { userId: string; partnerId: string; n
     kind: 'user',
     role: 'support',
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
     ...args,
   };
@@ -114,7 +113,7 @@ describe('lifecycle.assign', () => {
     });
     expect(row.participants).toEqual([
       { id: 'u_agent', name: 'Agent' },
-      { id: 'u_joiner', name: 'Joe Joiner', isExternal: false },
+      { id: 'u_joiner', name: 'Joe Joiner' },
     ]);
 
     const sysMessages = await handle.db.select().from(messages).where(eq(messages.ticketId, ticketId));
@@ -164,7 +163,7 @@ describe('lifecycle.assign', () => {
     expect(row.participants).toEqual([
       { id: 'u_agent', name: 'Agent' },
       { id: 'u_primary', name: 'Patty Primary' },
-      { id: 'u_secondary', name: 'Sandy Secondary', isExternal: false },
+      { id: 'u_secondary', name: 'Sandy Secondary' },
     ]);
 
     const auditRows = await handle.db.select().from(auditLog).where(eq(auditLog.targetId, ticketId));
@@ -205,7 +204,7 @@ describe('lifecycle.assign', () => {
     // joiner appended.
     expect(row.participants).toEqual([
       { id: 'u_agent', name: 'Agent' },
-      { id: 'u_joiner', name: 'New Primary', isExternal: false },
+      { id: 'u_joiner', name: 'New Primary' },
     ]);
 
     const auditRows = await handle.db.select().from(auditLog).where(eq(auditLog.targetId, ticketId));

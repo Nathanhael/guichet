@@ -11,9 +11,8 @@ import {
 } from '../../services/ticketQueries.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule } from '../../services/businessHours.js';
 import { findPartnerConfig } from '../../services/partnerQueries.js';
-import { findUserName } from '../../services/userQueries.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
-import { can } from '../../services/auth/capabilities.js';
+import { canUseSupportWorkflows } from '../../services/roles.js';
 import { MAX_LABELS_PER_TICKET } from '../../constants.js';
 import {
   requireIdentified,
@@ -43,16 +42,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           return socket.emit('error', { message: 'Missing required fields' });
         }
 
-        // Resolve B2B-guest flag for the actor — denormalized into the
-        // first-message row inside the lifecycle txn so historical
-        // messages render the GUEST badge without a live presence
-        // lookup. Cheap single-row read.
-        const agentUser = await findUserName(baseActor.userId);
-        const createActor = { ...baseActor, isExternal: !!agentUser?.isExternal };
-
         const result = await ctx.lifecycle.create({
           partnerId: baseActor.partnerId,
-          actor: createActor,
+          actor: baseActor,
           dept,
           agentLang,
           references,
@@ -164,7 +156,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         // Capability replaces the legacy `socket.data.isSupport` denormalized
         // flag. Lifecycle would also refuse with NOT_AUTHORIZED, but the
         // handler-level check preserves the legacy error shape.
-        if (!can(actor, 'use_support_workflows')) {
+        if (!canUseSupportWorkflows(actor.role, actor.isPlatformOperator)) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
@@ -256,7 +248,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       //   LABEL_ROLES = ['support', 'admin', 'platform_operator']
       // array, which compared role==='platform_operator' (a string never set
       // on socket.data.role) and so silently rejected operators.
-      if (!can(actor, 'use_support_workflows')) {
+      if (!canUseSupportWorkflows(actor.role, actor.isPlatformOperator)) {
         return socket.emit('error', { message: 'Not authorized to update labels' });
       }
 
