@@ -73,14 +73,14 @@ All AI capabilities are server-side, multi-tenant, opt-in per partner via `partn
 
 | # | Gap | Priority | Fix |
 |---|---|---|---|
-| G1 | Receiving colleague (agent reading an expert reply, or vice versa) cannot see when the message was AI-improved or machine-translated | **Low** — internal worker-to-worker, no consumer exposure (see §1). Recommended as honest-collaboration polish; not a regulatory must. | Render the existing ✨ improve marker and a new "auto-translated" marker on both sides of the chat, not just the author side. |
-| G2 | No first-touch AI disclosure inside the agent↔expert chat | **Low** — workforce-wide disclosure already happens via the works-council route (`WORKS_COUNCIL_DISCLOSURE.md`). | Optional: a one-time in-app reminder of which AI features are active. Lower priority than G3 because the formal CCT 39 information round is the controlling channel. |
-| G3 | No worker-facing disclosure that AI usage is logged | High (CCT 81 + AI Act Annex III §4(b) firewall) | Add a once-per-session info banner in `SupportView` linking to the works-council disclosure. See `WORKS_COUNCIL_DISCLOSURE.md`. |
-| G4 | Privacy policy template does not mention AI processing | High (Art. 13) | Provide a per-partner privacy-policy snippet in the admin onboarding flow. |
-| G5 | No documented purpose-limitation policy for `ai_usage_log` | High (Annex III §4(b) firewall) | Capture in `WORKS_COUNCIL_DISCLOSURE.md` §4 and link from admin AI page. |
+| G1 | Receiving colleague (agent reading an expert reply, or vice versa) cannot see when the message was AI-improved or machine-translated | **Closed** — already implemented prior to this audit. | `Message.tsx` renders `✨` for any message with `improvedAt` set or when the viewer is reading a translation (`isShowingTranslation`), regardless of `isMine`. Covered by `Message.aiBadge.test.tsx`. |
+| G2 | No first-touch AI disclosure inside the agent↔expert chat | **Deferred / covered indirectly** — `AiDisclosureBanner` ships the workforce-level reminder one level up (view shell). An in-chat reminder per ticket would be redundant. | If user-feedback later asks for it, render a one-time per-ticket info-bar in `ChatHeader`. Not scheduled. |
+| G3 | No worker-facing disclosure that AI usage is logged | **Closed** | `AiDisclosureBanner` (once per `user × partner`, dismissable) renders in both `SupportView` and `AgentView`; opens `AiDisclosureModal` with the worker-facing summary. |
+| G4 | Privacy notice does not mention AI processing | **Closed** | `PARTNER_PRIVACY_NOTICE_SNIPPET.md` provides NL / FR / EN boilerplate for the partner's worker privacy notice (Art. 13). |
+| G5 | No documented purpose-limitation policy for `ai_usage_log` | **Closed** | `WORKS_COUNCIL_DISCLOSURE.md` §4 documents the policy. `AdminAi`'s "Privacy & compliance" section surfaces a button that opens `AiDisclosureModal` (worker-facing summary) and a footnote pointing partners at the full template for the CE / CPPT consultation. |
 | G6 | DPIA not on file | Medium | Produce a DPIA covering the combined AI + monitoring scope. Out of scope for this engineering change. |
 
-Engineering changes G1–G3 + G5 are tracked in the companion UI proposal. G4 + G6 are policy/legal artefacts outside the codebase.
+After the per-membership opt-out + UI follow-up + this polish, the engineering gap list collapses to **G6 only** (a legal artefact). All transparency obligations achievable in code are met before the Art. 50 phased-applicability deadline of 2026-08-02.
 
 ## 5. Review cadence
 
