@@ -122,10 +122,8 @@ export const userRouter = router({
     }),
 
   /**
-   * Return the current authenticated user's identity payload. Client
-   * components (UserMenu, GuestBadge, etc.) need a fresh `isExternal` flag
-   * without relying on stale data from the login response. Also serves as
-   * the canonical "current user" query point.
+   * Return the current authenticated user's identity payload. Serves as the
+   * canonical "current user" query point.
    */
   me: protectedProcedure.query(async ({ ctx }) => {
     const rows = await db
@@ -136,7 +134,6 @@ export const userRouter = router({
         lang: users.lang,
         avatarUrl: users.avatarUrl,
         isPlatformOperator: users.isPlatformOperator,
-        isExternal: users.isExternal,
       })
       .from(users)
       .where(eq(users.id, ctx.user.id))
@@ -152,7 +149,6 @@ export const userRouter = router({
       lang: (row.lang ?? 'en') as 'nl' | 'fr' | 'en',
       avatarUrl: row.avatarUrl ?? null,
       isPlatformOperator: !!row.isPlatformOperator,
-      isExternal: !!row.isExternal,
       // Role + departments are JWT-bound (partner-scoped), pulled from context.
       role: ctx.user.role,
       partnerId: ctx.user.partnerId ?? null,

@@ -16,7 +16,6 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
-import GuestBadge from '../GuestBadge';
 import Avatar from './Avatar';
 
 export interface UserMenuChipProps {
@@ -284,7 +283,7 @@ export default function UserMenuChip({
         title={user.name}
         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)] transition-colors text-left"
       >
-        <Avatar name={user.name} src={user.avatarUrl ?? null} size={32} isExternal={user.isExternal} />
+        <Avatar name={user.name} src={user.avatarUrl ?? null} size={32} />
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-semibold text-[var(--color-ink)] truncate flex items-center gap-1.5">
             <span className="truncate">{user.name}</span>
@@ -307,11 +306,10 @@ export default function UserMenuChip({
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
           className="z-50 w-[280px] bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] max-h-[calc(100vh-32px)] overflow-y-auto custom-scrollbar"
         >
-          <div className="px-3.5 py-2.5 border-b border-[var(--color-border)] flex items-center gap-2 min-w-0">
-            <span className="text-[12px] text-[var(--color-ink-muted)] truncate flex-1">
+          <div className="px-3.5 py-2.5 border-b border-[var(--color-border)] min-w-0">
+            <span className="text-[12px] text-[var(--color-ink-muted)] truncate block">
               {user.email}
             </span>
-            <GuestBadge isExternal={user.isExternal} size="prominent" />
           </div>
 
           {showStatus && (

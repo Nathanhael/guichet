@@ -92,7 +92,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'support',
           partnerId: partnerA,
           isPlatformOperator: false,
-          isExternal: false,
           lang: 'en',
         },
       } as unknown as CallerCtx);
@@ -108,7 +107,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'platform_operator',
           partnerId: partnerA,
           isPlatformOperator: true,
-          isExternal: false,
           lang: 'en',
         },
       } as unknown as CallerCtx);
@@ -126,7 +124,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'support',
           partnerId: partnerA,
           isPlatformOperator: false,
-          isExternal: false,
           lang: 'en',
         },
       } as unknown as CallerCtx);
@@ -142,7 +139,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'platform_operator',
           partnerId: partnerA,
           isPlatformOperator: true,
-          isExternal: false,
           lang: 'en',
         },
       } as unknown as CallerCtx);
@@ -160,7 +156,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'platform_operator',
           partnerId: partnerA,
           isPlatformOperator: true,
-          isExternal: false,
           lang: 'en',
           departments: [],
         },
@@ -180,7 +175,6 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
           role: 'platform_operator',
           partnerId: null,
           isPlatformOperator: true,
-          isExternal: false,
           lang: 'en',
           departments: [],
         },

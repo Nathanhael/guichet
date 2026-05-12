@@ -8,7 +8,6 @@
  *   3. Department validation: BAD_REQUEST when any id is not in the partner's
  *      `partners.departments` JSONB.
  *   4. Tenant isolation: NOT_FOUND when membership belongs to another partner.
- *   5. Guest gate: FORBIDDEN for B2B guest caller (isExternal=true).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -28,7 +27,6 @@ vi.mock('../../db/schema.js', () => ({
     id: { name: 'id' },
     name: { name: 'name' },
     email: { name: 'email' },
-    isExternal: { name: 'isExternal' },
     lastActiveAt: { name: 'lastActiveAt' },
     externalId: { name: 'externalId' },
   },
@@ -96,7 +94,6 @@ function makeCaller(overrides: Partial<{
   partnerId: string | null;
   role: string;
   isPlatformOperator: boolean;
-  isExternal: boolean;
 }> = {}) {
   return partnerMembersRouter.createCaller({
     user: {
@@ -104,7 +101,6 @@ function makeCaller(overrides: Partial<{
       partnerId: overrides.partnerId === undefined ? 'p-tenant-a' : overrides.partnerId,
       role: (overrides.role ?? 'admin') as 'admin',
       isPlatformOperator: overrides.isPlatformOperator ?? false,
-      isExternal: overrides.isExternal ?? false,
       departments: [],
     },
   } as unknown as CallerCtx);
@@ -152,7 +148,7 @@ describe('partner.updateMemberDepartments', () => {
     mockMembershipLookup([{ id: 'm-1', role: 'support', userId: 'u-target' }]);
     mockPartnerDepartmentsLookup(['sales', 'tech']);
 
-    const caller = makeCaller({ id: 'admin-1', isExternal: false });
+    const caller = makeCaller({ id: 'admin-1' });
     const result = await caller.updateMemberDepartments({
       membershipId: 'm-1',
       departments: ['sales'],
@@ -212,16 +208,6 @@ describe('partner.updateMemberDepartments', () => {
     await expect(
       caller.updateMemberDepartments({ membershipId: 'm-cross', departments: ['sales'] }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
-    expect(updateSet).not.toHaveBeenCalled();
-  });
-
-  it('throws FORBIDDEN for a B2B guest admin caller', async () => {
-    const caller = makeCaller({ isExternal: true });
-
-    await expect(
-      caller.updateMemberDepartments({ membershipId: 'm-1', departments: ['sales'] }),
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    expect(dbSelectMock).not.toHaveBeenCalled();
     expect(updateSet).not.toHaveBeenCalled();
   });
 

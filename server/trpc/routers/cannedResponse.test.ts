@@ -142,7 +142,6 @@ function caller(role: 'admin' | 'support' = 'admin') {
       role,
       isPlatformOperator: false,
       departments: [],
-      isExternal: false,
     },
   } as unknown as CallerCtx);
 }

@@ -16,7 +16,6 @@ export const jwtPayloadSchema = z.object({
   membershipId: z.string().optional(),
   departments: z.array(z.string()).optional(),
   isPlatformOperator: z.boolean().optional(),
-  isExternal: z.boolean().optional(),
   jti: z.string().optional(),
   iat: z.number().optional(),
   exp: z.number().optional(),
@@ -31,7 +30,6 @@ export interface TRPCUser {
   membershipId?: string;
   departments: string[];
   isPlatformOperator: boolean;
-  isExternal: boolean;
   tokenJti?: string;
   tokenExp?: number;
   tokenIat?: number;
@@ -56,7 +54,6 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
         membershipId: decoded.membershipId,
         departments: decoded.departments ?? [],
         isPlatformOperator: isPlatformAdmin(!!decoded.isPlatformOperator),
-        isExternal: decoded.isExternal ?? false,
         tokenJti: decoded.jti,
         tokenExp: decoded.exp,
         tokenIat: decoded.iat,

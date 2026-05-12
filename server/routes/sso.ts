@@ -19,7 +19,6 @@ import {
   setAuthCookie,
   parseExpiryToSeconds,
   createRefreshToken,
-  flipIsExternal,
 } from '../services/auth/index.js';
 
 const router = express.Router();
@@ -289,7 +288,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     }
 
     // Azure-specific claims from the verified payload
-    const claims = payload as JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string; acct?: number; idp?: string };
+    const claims = payload as JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string };
 
     // Verify nonce to prevent token replay attacks
     if (claims.nonce !== expectedNonce) {
@@ -299,14 +298,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const oid: string = claims.oid || '';
     const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
     const name: string = claims.name || email;
-
-    // Azure B2B guest detection.
-    //   acct === 1  → Microsoft documents this as "account type: guest" on the resource tenant.
-    //   idp present → token includes a federated IdP claim, meaning the user's home tenant issued
-    //                 the identity; the guest signed in against our tenant via B2B.
-    // Either signal is sufficient. The `issuer` was already verified equal to our tenant, so `tid`
-    // would be redundant here.
-    const isExternal: boolean = claims.acct === 1 || !!claims.idp;
 
     // Locale claim resolved via the shared `localeSync` helper. Per-partner
     // attribute map (if configured) is applied after we identify the partner
@@ -345,10 +336,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           await db.delete(users).where(eq(users.id, user.id));
           return res.redirect(`${clientOrigin}/login?sso_error=invite_expired`);
         }
-        // Update the non-flag fields first; let flipIsExternal own the flag
-        // change so the staleness-window revocation cascade is centralized.
         await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));
-        await flipIsExternal(user.id, isExternal);
         await db.insert(auditLog).values({
           action: 'sso.invite_claimed',
           actorId: user.id,
@@ -356,7 +344,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           targetId: user.id,
           metadata: { email, oid, ageMs },
         });
-        logger.info({ userId: user.id, oid, isExternal, ageMs }, '[SSO] Linked existing user to Azure OID');
+        logger.info({ userId: user.id, oid, ageMs }, '[SSO] Linked existing user to Azure OID');
       } else {
         // Brand new SSO user
         const newId = crypto.randomUUID();
@@ -365,11 +353,10 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           email,
           name,
           externalId: oid,
-          isExternal,
           ...(azureLang && { lang: azureLang }),
         });
         user = (await db.select().from(users).where(eq(users.id, newId)).limit(1))[0];
-        logger.info({ userId: newId, oid, isExternal }, '[SSO] Created new SSO user');
+        logger.info({ userId: newId, oid }, '[SSO] Created new SSO user');
       }
     } else {
       // Sync locale from the IdP claim unless the user has explicitly locked
@@ -384,7 +371,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         .update(users)
         .set({ name, email, ...(nextLang && { lang: nextLang }) })
         .where(eq(users.id, user.id));
-      await flipIsExternal(user.id, isExternal);
       if (nextLang) {
         await db.insert(auditLog).values({
           action: 'user.locale.sso_sync',
@@ -445,29 +431,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             departments: (m.defaultDepartments as string[]) || [] 
           });
         }
-      }
-
-      // Guest single-partner enforcement (Azure B2B guests must map to exactly one partner).
-      // Fail-closed: if a guest is in groups that resolve to more than one partner it is a
-      // misconfiguration in Azure (group assignment mistake or partner boundary bleed) and we
-      // reject the login entirely rather than silently picking one. Internal staff keep the
-      // existing multi-partner behavior (they use PartnerSwitcher mid-session).
-      if (isExternal && targetMemberships.size > 1) {
-        const partnerIdList = Array.from(targetMemberships.keys());
-        logger.warn(
-          { userId: user.id, partnerIds: partnerIdList, azureGroups },
-          '[SSO] Guest rejected: mapped to multiple partners',
-        );
-        await db.insert(auditLog).values({
-          action: 'sso.guest_multi_partner_rejected',
-          actorId: user.id,
-          targetType: 'user',
-          targetId: user.id,
-          // Audit metadata stays minimal (#45): partnerIds for diagnosis, groupCount only.
-          // Full azureGroups array is in the structured log, not the audit DB.
-          metadata: { partnerIds: partnerIdList, groupCount: azureGroups.length },
-        });
-        return res.redirect(`${clientOrigin}/?sso_error=guest_multi_partner_mapping`);
       }
 
       // Upsert current memberships (Force Sync)
@@ -579,10 +542,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       partnerId: defaultMembership?.partnerId,
       membershipId: defaultMembership?.id,
       isPlatformOperator: !!user.isPlatformOperator,
-      // Source from the freshly Azure-derived `isExternal` (line 302), not the
-      // stale `user.isExternal` loaded before the L341 / L375 UPDATEs. Keeps
-      // the JWT claim in sync with the DB row that was just persisted.
-      isExternal,
     });
 
     // Build the SSO payload but store it server-side to avoid exposing user data in URL
@@ -593,7 +552,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         email: user.email ?? '',
         lang: user.lang,
         isPlatformOperator: user.isPlatformOperator,
-        isExternal: user.isExternal,
         accessibilityPrefs: user.accessibilityPrefs ?? {},
         avatarUrl: user.avatarUrl,
       },

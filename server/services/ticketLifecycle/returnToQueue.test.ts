@@ -17,7 +17,6 @@ function userActor(args: { userId: string; partnerId: string; name: string }): U
     kind: 'user',
     role: 'support',
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
     ...args,
   };

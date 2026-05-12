@@ -19,14 +19,9 @@ const {
   const limitMock = vi.fn();
 
   dbSelectMock.mockReturnValue({ from: fromMock });
-  // Audit query chain: from → leftJoin → where → orderBy → limit. The
-  // blockExternalUsers middleware no longer hits the DB after slice #71 — it
-  // reads ctx.user.isExternal directly — so the legacy `from → where → limit`
-  // single-limit shape is intentionally absent here.
+  // Audit query chain: from → leftJoin → where → orderBy → limit.
   fromMock.mockReturnValue({ leftJoin: leftJoinMock, where: whereMock });
   leftJoinMock.mockReturnValue({ where: whereMock });
-  // whereMock returns both next steps so isExternal lookup can call .limit()
-  // directly while the audit query still chains .orderBy().limit().
   whereMock.mockReturnValue({ orderBy: orderByMock, limit: limitMock });
   orderByMock.mockReturnValue({ limit: limitMock });
   limitMock.mockResolvedValue([]);

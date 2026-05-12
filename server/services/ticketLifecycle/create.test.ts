@@ -32,12 +32,11 @@ function lifecycleWithRealModerator(): TicketLifecycle {
 
 let handle: TestDbHandle;
 
-function agentActor(args: { userId: string; partnerId: string; name: string; isExternal?: boolean }): UserActor {
+function agentActor(args: { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'agent',
     isPlatformOperator: false,
-    isExternal: args.isExternal ?? false,
     lang: 'en',
     ...args,
   };
@@ -334,7 +333,7 @@ describe('lifecycle.create', () => {
 
     const supportActorRow: UserActor = {
       kind: 'user', userId: 'u_supp', partnerId: 'p_a', name: 'Supp',
-      role: 'support', isPlatformOperator: false, isExternal: false, lang: 'en',
+      role: 'support', isPlatformOperator: false, lang: 'en',
     };
     const result = await lifecycle.create({
       partnerId: 'p_a',

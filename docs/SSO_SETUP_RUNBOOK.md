@@ -4,9 +4,7 @@ End-to-end setup for Azure Entra ID SSO on Guichet — both the **one-time deplo
 wiring** and the **per-partner onboarding** repeated for every business unit.
 
 Architecture context: Guichet runs as a **single-tenant SSO app** (one app
-registration in our Entra tenant) with **multiple partners as business units**
-and **B2B guests** for partner employees. See `docs/TENANT_IDENTITY_SPEC.md` for
-guest-vs-internal semantics.
+registration in our Entra tenant) with **multiple partners as business units**.
 
 ---
 
@@ -44,7 +42,7 @@ Portal → Microsoft Entra ID → **Properties** → **Manage security defaults*
 toggle **Disabled** → pick a reason → Save.
 
 For prod, prefer Conditional Access policies over leaving security defaults on
-— the wizard interrupts every B2B guest's first login.
+— the wizard interrupts every user's first login.
 
 ### 1.3 Environment variables
 
@@ -56,13 +54,6 @@ AZURE_AD_CLIENT_ID=<application-id>
 AZURE_AD_CLIENT_SECRET=<secret-value>
 AZURE_AD_REDIRECT_URI=https://<your-host>/api/v1/auth/sso/azure/callback
 ```
-
-> **`INTERNAL_EMAIL_DOMAINS` is currently vestigial.** The variable is loaded by
-> `config.ts` but **not read** by the SSO callback. The `users.isExternal` flag
-> is driven by Azure token claims (`acct === 1` or `idp` is set → guest), not by
-> email-domain matching. Setting `INTERNAL_EMAIL_DOMAINS` does not flip the
-> `destructive_admin` / `audit_read` capability gates today. Track or remove the
-> var; do not rely on it for B2B classification.
 
 Production hardening (`config.ts` enforces FATAL exits when `NODE_ENV=production`):
 
@@ -155,68 +146,14 @@ The role priority logic in `routes/sso.ts:420` resolves to the **highest role
 across all matched groups** per partner (admin > support > agent), so a user in
 both `Partner-Acme-Support` and `Partner-Acme-Agents` lands as support.
 
-### 2.4 Onboard partner employees as B2B guests
+### 2.4 Customer admin self-service
 
-For each partner employee:
-
-1. **Invite as B2B guest**: Entra → Users → **New user** → **Invite external
-   user** → enter their email (any IdP — Microsoft, Google, their own Entra,
-   etc.). Microsoft sends them an invitation email.
-2. **Add to group(s)**: open the appropriate `Partner-<slug>-<Role>` group →
-   Members → **Add** → pick the guest.
-3. Tell the user to accept the invitation email (they consent once to share
-   profile info), then log in to Guichet via the **Sign in with Microsoft**
-   button.
-
-CLI (single-shot guest invite — also creates the redirect URL Microsoft will
-include in the email):
-
-```powershell
-$body = @'
-{
-  "invitedUserEmailAddress": "person@theircompany.com",
-  "invitedUserDisplayName": "Person Name",
-  "inviteRedirectUrl": "https://<your-host>/",
-  "sendInvitationMessage": true
-}
-'@
-$body | Out-File -Encoding ascii -NoNewline -FilePath "$env:TEMP\invite.json"
-$invite = az rest --method post `
-  --url "https://graph.microsoft.com/v1.0/invitations" `
-  --headers "Content-Type=application/json" `
-  --body "@$env:TEMP\invite.json" -o json | ConvertFrom-Json
-$invite.invitedUser.id  # add this object ID to the group below
-az ad group member add --group "<group-id>" --member-id $invite.invitedUser.id
-```
-
-### 2.5 Single-partner enforcement for guests
-
-A B2B guest whose Azure groups resolve to **more than one partner** is
-**rejected at login** with `sso_error=guest_multi_partner_mapping` and an
-audit row (`sso.guest_multi_partner_rejected`). This is intentional — strict
-tenant isolation. If the same person needs access to two partners, use two
-separate guest invitations under different email aliases, or convert them to
-internal staff.
-
-### 2.6 Customer admin self-service
-
-B2B guests are blocked from `destructive_admin` mutations across partner
-config (department + SLA edits), webhooks (CRUD + secret rotation + test),
-labels (CRUD), and canned responses (CRUD). They are also blocked from
-`audit_read` on internal-only admin reads (the admin roster + actor identities
-in audit views). Two options if a partner wants to manage their own people
-without going through the platform op:
-
-1. **Group owner pattern (recommended)** — make the customer's designated admin
-   the **owner** of their `Partner-<slug>-*` security groups (Entra → Groups →
-   the group → Owners → Add). They can add/remove members in their own groups
-   without tenant-admin access. SSO callback picks up the change on the
-   member's next login.
-2. **Internal-staff promotion** — re-invite them as a regular member of our
-   Entra tenant (not a B2B guest). The next SSO login no longer carries
-   `acct === 1` / `idp` claims, `users.isExternal` flips to `false`, and the
-   capability gates fall away. Heavyweight; defeats the B2B model. Only
-   appropriate for embedded contractors.
+If a partner wants to manage their own people without going through the
+platform op: **Group owner pattern** — make the customer's designated admin
+the **owner** of their `Partner-<slug>-*` security groups (Entra → Groups →
+the group → Owners → Add). They can add/remove members in their own groups
+without tenant-admin access. SSO callback picks up the change on the
+member's next login.
 
 ---
 
@@ -251,7 +188,6 @@ Implications:
 | `sso_error=` query param | Cause | Fix |
 |---|---|---|
 | `no_matching_groups` | Token had `groupCount: 0` for a user with no internal-staff fallback | Stale Microsoft session — sign out fully (incognito works) and retry. If groups claim genuinely missing, re-check §1.1 step 4 (Token configuration) |
-| `guest_multi_partner_mapping` | Guest's groups resolve to 2+ partners | Reduce their group memberships, or convert to internal staff |
 | `invite_expired` | Pre-invited user didn't claim within the `INVITE_TTL_DAYS` window (currently 7 days, hard-coded in `routes/sso.ts`) | Issue a new invite |
 | `token_exchange_failed` / `token_verification_failed` | App reg secret rotated, expired, or wrong | Issue a new client secret in Entra and update `AZURE_AD_CLIENT_SECRET` |
 | `nonce_mismatch` | Possible token replay; usually benign (browser back-button on the callback URL) | Retry the login |
@@ -279,7 +215,7 @@ After a user signs in via SSO, confirm provisioning landed:
 
 ```bash
 docker compose exec -T db psql -U user -d guichet -c \
-  "SELECT u.id, u.email, u.is_external, u.external_id IS NOT NULL AS has_oid,
+  "SELECT u.id, u.email, u.external_id IS NOT NULL AS has_oid,
           m.role, m.source, m.departments, m.partner_id
    FROM users u
    LEFT JOIN memberships m ON m.user_id = u.id
@@ -289,6 +225,5 @@ docker compose exec -T db psql -U user -d guichet -c \
 Expected for a normal SSO login:
 
 - `has_oid = t` (Azure OID stamped)
-- `is_external = t` for B2B guests (token had `acct === 1` or an `idp` claim), `f` for regular tenant members
 - `m.source = 'sso'` for group-provisioned memberships
 - `m.role` matches the highest-priority group they're in

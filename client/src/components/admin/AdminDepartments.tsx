@@ -4,7 +4,6 @@ import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Trash2, Check, X, Plus, Building2, HelpCircle } from 'lucide-react';
 import Toast from '../Toast';
-import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
@@ -53,8 +52,6 @@ export default function AdminDepartments() {
   }));
   const t = useT();
   const utils = trpc.useUtils();
-  const isExternal = useIsExternalAdmin();
-  const guestTooltip = t('guest_admin_disabled_tooltip');
 
   // Fetch departments from server — single source of truth
   const { data: manifest } = trpc.partner.getManifest.useQuery();
@@ -307,10 +304,7 @@ export default function AdminDepartments() {
         </div>
         <button
           onClick={handleAdd}
-          disabled={isExternal || isSaving}
-          aria-disabled={isExternal || undefined}
-          title={isExternal ? guestTooltip : undefined}
-          data-guest-disabled={isExternal || undefined}
+          disabled={isSaving}
           className={PRIMARY_BTN}
         >
           <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -462,10 +456,7 @@ export default function AdminDepartments() {
                 <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                   <button
                     onClick={saveEdit}
-                    disabled={isExternal || isSaving}
-                    aria-disabled={isExternal || undefined}
-                    title={isExternal ? guestTooltip : undefined}
-                    data-guest-disabled={isExternal || undefined}
+                    disabled={isSaving}
                     className={PRIMARY_BTN}
                   >
                     <Check className="h-3.5 w-3.5" aria-hidden />
@@ -488,32 +479,28 @@ export default function AdminDepartments() {
               <div className={`grid grid-cols-[1fr_1fr_1fr_180px_60px] border-b border-[var(--color-border)] last:border-0 transition-colors ${deletingIdx === idx ? '' : 'hover:bg-[var(--color-hover)]'} group/row`}>
                 <div
                   role="button"
-                  tabIndex={isExternal ? -1 : 0}
-                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  tabIndex={0}
+                  onClick={() => startEdit(idx)}
                   onKeyDown={(e) => {
-                    if (isExternal) return;
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
                   }}
-                  aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : t('click_edit_dept')}
+                  title={t('click_edit_dept')}
                   className={`px-4 py-3 text-[13px] font-medium text-[var(--color-ink)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
-                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                    'cursor-pointer'
                   }`}
                 >
                   {dept.name}
                 </div>
                 <div
                   role="button"
-                  tabIndex={isExternal ? -1 : 0}
-                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  tabIndex={0}
+                  onClick={() => startEdit(idx)}
                   onKeyDown={(e) => {
-                    if (isExternal) return;
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
                   }}
-                  aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : t('click_edit_description')}
+                  title={t('click_edit_description')}
                   className={`px-4 py-3 text-[13px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
-                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                    'cursor-pointer'
                   }`}
                 >
                   {dept.description || (
@@ -529,20 +516,17 @@ export default function AdminDepartments() {
                     startEdit() path as the pencil. */}
                 <div
                   role="button"
-                  tabIndex={isExternal ? -1 : 0}
-                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  tabIndex={0}
+                  onClick={() => startEdit(idx)}
                   onKeyDown={(e) => {
-                    if (isExternal) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       startEdit(idx);
                     }
                   }}
-                  aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : t('click_edit_ref_fields')}
-                  data-guest-disabled={isExternal || undefined}
+                  title={t('click_edit_ref_fields')}
                   className={`px-4 py-3 text-[12px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
-                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                    'cursor-pointer'
                   }`}
                 >
                   {dept.referenceFields.length > 0 ? (
@@ -608,11 +592,9 @@ export default function AdminDepartments() {
                       </select>
                       <button
                         onClick={saveSla}
-                        disabled={isExternal || updateSla.isPending}
-                        aria-disabled={isExternal || undefined}
-                        title={isExternal ? guestTooltip : t('save')}
-                        data-guest-disabled={isExternal || undefined}
-                        className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
+                        disabled={updateSla.isPending}
+                              title={t('save')}
+                              className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <Check className="h-3 w-3" aria-hidden />
                       </button>
@@ -637,11 +619,9 @@ export default function AdminDepartments() {
                       </span>
                       <button
                         onClick={() => startSlaEdit(idx)}
-                        disabled={isExternal}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className={`${ICON_BTN} w-6 h-6 opacity-0 group-hover/row:opacity-100`}
-                        title={isExternal ? guestTooltip : t('sla_edit')}
+                        disabled={false}
+                                    className={`${ICON_BTN} w-6 h-6 opacity-0 group-hover/row:opacity-100`}
+                        title={t('sla_edit')}
                       >
                         <Pencil className="h-3 w-3" aria-hidden />
                       </button>
@@ -656,11 +636,9 @@ export default function AdminDepartments() {
                       </span>
                       <button
                         onClick={() => startSlaEdit(idx)}
-                        disabled={isExternal}
-                        aria-disabled={isExternal || undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] font-medium text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        title={isExternal ? guestTooltip : t('sla_set')}
+                        disabled={false}
+                                    className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] font-medium text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title={t('sla_set')}
                       >
                         {t('sla_set')}
                       </button>
@@ -670,11 +648,9 @@ export default function AdminDepartments() {
                 <div className="px-2 py-3 flex items-center justify-end">
                   <button
                     onClick={() => startDelete(idx)}
-                    disabled={isExternal}
-                    aria-disabled={isExternal || undefined}
-                    data-guest-disabled={isExternal || undefined}
-                    className={`w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100`}
-                    title={isExternal ? guestTooltip : t('delete')}
+                    disabled={false}
+                        className={`w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100`}
+                    title={t('delete')}
                     aria-label={t('delete_dept_aria')}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -694,10 +670,7 @@ export default function AdminDepartments() {
                 </span>
                 <button
                   onClick={confirmDelete}
-                  disabled={isExternal || isSaving}
-                  aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : undefined}
-                  data-guest-disabled={isExternal || undefined}
+                  disabled={isSaving}
                   className={DANGER_BTN}
                 >
                   {t('confirm_delete_btn')}

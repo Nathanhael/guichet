@@ -50,7 +50,7 @@ export const labelRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        trpcActor(ctx, { capability: 'destructive_admin' });
+        trpcActor(ctx);
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         const id = `l_${crypto.randomUUID()}`;
@@ -91,7 +91,7 @@ export const labelRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        trpcActor(ctx, { capability: 'destructive_admin' });
+        trpcActor(ctx);
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         const conditions = [eq(labels.id, input.id), eq(labels.partnerId, ctx.user.partnerId)];
@@ -132,7 +132,7 @@ export const labelRouter = router({
     .input(z.string().min(1))
     .mutation(async ({ input: id, ctx }) => {
       try {
-        trpcActor(ctx, { capability: 'destructive_admin' });
+        trpcActor(ctx);
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
         // Always scope to current partner — platform operators have partnerId set via enter-partner

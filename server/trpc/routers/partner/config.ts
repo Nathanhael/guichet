@@ -237,7 +237,7 @@ export const partnerConfigRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        trpcActor(ctx, { capability: 'destructive_admin' });
+        trpcActor(ctx);
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
@@ -288,7 +288,7 @@ export const partnerConfigRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+        const actor = trpcActor(ctx);
 
         const mappedDepartments = input.departments.map(d => ({
           id: d.id ? d.id : makeSlug(d.name),
@@ -377,7 +377,7 @@ export const partnerConfigRouter = router({
       }).nullable(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+      const actor = trpcActor(ctx);
 
       return db.transaction(async (tx) => {
         const [row] = await tx.select({ departments: partners.departments }).from(partners).where(eq(partners.id, actor.partnerId));
@@ -430,7 +430,7 @@ export const partnerConfigRouter = router({
       // adminProcedure passes B2B guests with admin role through; gate the
       // mutation explicitly so guests can't push prompt customizations via
       // direct tRPC calls even though the UI tab is hidden.
-      trpcActor(ctx, { capability: 'destructive_admin' });
+      trpcActor(ctx);
       const partnerId = ctx.user.partnerId;
       if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
@@ -459,7 +459,7 @@ export const partnerConfigRouter = router({
   getAiCustomization: adminProcedure.query(async ({ ctx }) => {
     // Hidden from the B2B guest UI; gate the read so it can't be scraped
     // via direct tRPC calls.
-    trpcActor(ctx, { capability: 'ai_config_read' });
+    trpcActor(ctx);
     const partnerId = ctx.user.partnerId;
     if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 

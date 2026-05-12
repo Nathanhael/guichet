@@ -127,6 +127,13 @@
       "when": 1778092079759,
       "tag": "0017_add_partner_dashboard_config",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778586172628,
+      "tag": "0018_drop_is_external",
+      "breakpoints": true
     }
   ]
 }

@@ -82,8 +82,7 @@ export const partnerAuditRouter = router({
   }),
 
   // Audit rows leftJoin users.name for the actor — including platform
-  // operators who acted on this partner via /enter-partner. B2B guest admins
-  // must not see those identities, so this read is gated.
+  // operators who acted on this partner via /enter-partner.
   getAuditLog: partnerAdminProcedure
     .input(baseInput.extend({
       limit: z.number().min(1).max(100).default(50),
@@ -91,7 +90,7 @@ export const partnerAuditRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'audit_read' });
+        const actor = trpcActor(ctx);
 
         const conditions = buildConditions(input, actor.partnerId);
 
@@ -138,8 +137,7 @@ export const partnerAuditRouter = router({
   // with targetType='ticket' *and* rows where metadata.ticketId carries the id
   // (legacy/adjacent emitters that don't set targetType). Partner-scoped via
   // partnerId so cross-tenant leakage is impossible even if a caller guesses
-  // another tenant's ticket id. Same actor-name leak as getAuditLog, so the
-  // same `audit_read` capability gate applies.
+  // another tenant's ticket id.
   getForTicket: partnerAdminProcedure
     .input(z.object({
       ticketId: z.string(),
@@ -147,7 +145,7 @@ export const partnerAuditRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'audit_read' });
+        const actor = trpcActor(ctx);
 
         const results = await db.select({
           id: auditLog.id,
@@ -184,7 +182,7 @@ export const partnerAuditRouter = router({
     .input(baseInput)
     .query(async ({ input, ctx }) => {
       try {
-        const actor = trpcActor(ctx, { capability: 'audit_read' });
+        const actor = trpcActor(ctx);
         const conditions = buildConditions(input, actor.partnerId);
 
         return await db.select({

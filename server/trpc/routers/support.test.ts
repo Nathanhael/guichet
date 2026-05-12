@@ -116,7 +116,7 @@ describe('support.getStaffingByLanguage', () => {
 
   it('returns per-language counts scoped to the calling partner', async () => {
     const caller = appRouter.createCaller({
-      user: { id: userFrId, name: 'Fr User', email: 'fr@test', role: 'support', partnerId: partnerA, isPlatformOperator: false, isExternal: false, lang: 'fr' },
+      user: { id: userFrId, name: 'Fr User', email: 'fr@test', role: 'support', partnerId: partnerA, isPlatformOperator: false, lang: 'fr' },
     } as unknown as CallerCtx);
     const rows = await caller.support.getStaffingByLanguage({ partnerId: partnerA });
     const nl = rows.find((r) => r.lang === 'nl');
@@ -131,7 +131,7 @@ describe('support.getStaffingByLanguage', () => {
 
   it('rejects callers who are not a member of the partner', async () => {
     const caller = appRouter.createCaller({
-      user: { id: userNlId, name: 'Nl User', email: 'nl@test', role: 'support', partnerId: partnerA, isPlatformOperator: false, isExternal: false, lang: 'nl' },
+      user: { id: userNlId, name: 'Nl User', email: 'nl@test', role: 'support', partnerId: partnerA, isPlatformOperator: false, lang: 'nl' },
     } as unknown as CallerCtx);
     await expect(caller.support.getStaffingByLanguage({ partnerId: partnerB })).rejects.toThrow(/FORBIDDEN|not a member/i);
   });
@@ -140,7 +140,7 @@ describe('support.getStaffingByLanguage', () => {
     // make userNl a member of B for this check
     await db.insert(memberships).values({ id: randomUUID(), userId: userNlId, partnerId: partnerB, role: 'support', departments: [] });
     const caller = appRouter.createCaller({
-      user: { id: userNlId, name: 'Nl User', email: 'nl@test', role: 'support', partnerId: partnerB, isPlatformOperator: false, isExternal: false, lang: 'nl' },
+      user: { id: userNlId, name: 'Nl User', email: 'nl@test', role: 'support', partnerId: partnerB, isPlatformOperator: false, lang: 'nl' },
     } as unknown as CallerCtx);
     const rows = await caller.support.getStaffingByLanguage({ partnerId: partnerB });
     expect(rows).toEqual([]);

@@ -3,6 +3,15 @@
 All notable changes to Guichet are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-05-12 — Remove Azure B2B guest support + capability machinery
+
+- Dropped `users.is_external` and `messages.sender_is_external` columns (migration 0018).
+- Deleted `services/auth/capabilities.ts` + `services/auth/isExternalFlip.ts`. The `destructive_admin`, `audit_read`, `ai_config_read` capability gates were only ever about blocking B2B guests; without B2B they collapse into the admin-role check `partnerAdminProcedure` already enforces.
+- Removed `isExternal` from `UserActor`, JWT payload schema, and `tickets.participants` JSONB shape.
+- SSO callback no longer parses `acct === 1` / `idp` claims and no longer rejects guests with multi-partner mapping.
+- Client: deleted `GuestBadge`, `ExternalGuestGuard`, `useIsExternalAdmin`, `disabledIfExternal`. Removed `dormant`/`pendingInvite`/`isExternal` filters and the `dormant`/`guests` stats from `AdminTeam`. Deleted the 7 `guest_*` / `sso_guest_multi_partner_message` i18n keys.
+- Deleted: `docs/TENANT_IDENTITY_SPEC.md`, plus 4 B2B-dedicated server tests (destructiveAdminProcedure, ssoGuestB2b, webhook.guestGating, partner.audit.guestGating) and `client/src/components/ExternalGuestGuard.test.tsx`.
+
 ## [Unreleased]
 
 ### Removed

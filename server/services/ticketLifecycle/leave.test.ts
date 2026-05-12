@@ -19,7 +19,6 @@ function actor(overrides: Partial<UserActor> & { userId: string; partnerId: stri
     kind: 'user',
     role: 'support',
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
     ...overrides,
   };

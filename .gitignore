@@ -130,7 +130,6 @@ testing/
 !testing/e2e/**/*.spec.ts
 
 # Client behavioral tests (curated)
-!client/src/components/ExternalGuestGuard.test.tsx
 !client/src/utils/__tests__/notifications.test.ts
 !client/src/utils/__tests__/auditFormat.test.ts
 !client/src/hooks/useComposeAiImprove.test.ts

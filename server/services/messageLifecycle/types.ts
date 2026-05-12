@@ -148,7 +148,6 @@ export interface SendMessage {
   senderName: string;
   senderRole: string;
   senderLang: string;
-  senderIsExternal: boolean;
   text: string;
   originalText: string;
   mediaUrl?: string;

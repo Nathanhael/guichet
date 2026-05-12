@@ -1,13 +1,9 @@
 /**
- * Behavior test for partner.listAdmins guest-gating.
+ * Behavior test for partner.listAdmins.
  *
  * The endpoint must:
- *   1. Return the admin roster for an internal admin caller (isExternal=false).
+ *   1. Return the admin roster for an internal admin caller.
  *   2. Return the admin roster for a platform operator caller (operator bypass).
- *   3. Throw FORBIDDEN for a B2B guest admin caller (isExternal=true).
- *
- * Source of truth for guest exclusion is the server. Spec:
- * docs/superpowers/specs/2026-04-25-hide-admin-roster-from-guests.md
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,7 +23,6 @@ vi.mock('../../db/schema.js', () => ({
     id: { name: 'id' },
     name: { name: 'name' },
     email: { name: 'email' },
-    isExternal: { name: 'isExternal' },
     lastActiveAt: { name: 'lastActiveAt' },
     externalId: { name: 'externalId' },
   },
@@ -113,7 +108,6 @@ const ROSTER = [
     userId: 'u-alice',
     name: 'Alice Admin',
     email: 'alice@internal.test',
-    isExternal: false,
     lastActiveAt: null,
   },
   {
@@ -121,7 +115,6 @@ const ROSTER = [
     userId: 'u-bob',
     name: 'Bob Admin',
     email: 'bob@internal.test',
-    isExternal: false,
     lastActiveAt: null,
   },
 ];
@@ -131,7 +124,6 @@ function makeCaller(overrides: Partial<{
   partnerId: string | null;
   role: string;
   isPlatformOperator: boolean;
-  isExternal: boolean;
 }> = {}) {
   return partnerMembersRouter.createCaller({
     user: {
@@ -139,7 +131,6 @@ function makeCaller(overrides: Partial<{
       partnerId: overrides.partnerId === undefined ? 'p-tenant-a' : overrides.partnerId,
       role: (overrides.role ?? 'admin') as 'admin',
       isPlatformOperator: overrides.isPlatformOperator ?? false,
-      isExternal: overrides.isExternal ?? false,
       departments: [],
     },
   } as unknown as CallerCtx);
@@ -160,20 +151,18 @@ function mockRosterQuery(rows: typeof ROSTER) {
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
-describe('partner.listAdmins — guest gating', () => {
+describe('partner.listAdmins', () => {
   beforeEach(() => {
     dbSelectMock.mockReset();
   });
 
-  it('returns the admin roster for an internal admin caller (isExternal=false)', async () => {
-    // Slice #71: blockExternalUsers reads ctx.user.isExternal directly — no DB lookup.
+  it('returns the admin roster for an internal admin caller', async () => {
     mockRosterQuery(ROSTER);
 
     const caller = makeCaller({
       id: 'caller-internal-admin',
       role: 'admin',
       isPlatformOperator: false,
-      isExternal: false,
     });
     const result = await caller.listAdmins();
 
@@ -181,7 +170,6 @@ describe('partner.listAdmins — guest gating', () => {
   });
 
   it('returns the admin roster for a platform operator caller (operator bypass)', async () => {
-    // Operator bypasses the guard regardless of isExternal.
     mockRosterQuery(ROSTER);
 
     const caller = makeCaller({
@@ -192,17 +180,5 @@ describe('partner.listAdmins — guest gating', () => {
     const result = await caller.listAdmins();
 
     expect(result).toEqual(ROSTER);
-  });
-
-  it('throws FORBIDDEN for a B2B guest admin caller (isExternal=true)', async () => {
-    // Roster query must NOT run — guard blocks before it.
-    const caller = makeCaller({
-      id: 'caller-guest-admin',
-      role: 'admin',
-      isPlatformOperator: false,
-      isExternal: true,
-    });
-
-    await expect(caller.listAdmins()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });

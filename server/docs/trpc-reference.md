@@ -18,8 +18,6 @@ Client access: `trpc.<router>.<procedure>`
 | **platform** | Platform operator |
 | **role(...)** / **partnerRole(...)** | Specific roles required (platform operators bypass) |
 
-B2B-guest gating is enforced **inside** procedure handlers via `trpcActor(ctx, { capability })` (`destructive_admin` blocks mutations; `audit_read` blocks internal-only PII reads). The middleware list above does not encode it.
-
 ---
 
 ## status
@@ -46,9 +44,9 @@ B2B-guest gating is enforced **inside** procedure handlers via `trpcActor(ctx, {
 |-----------|------|------|-------------|
 | `list` | query | partnerScoped (role: support, admin) | List canned responses (with optional category filter) |
 | `getForPicker` | query | partnerScoped (role: support, admin) | Locale-aware shape for the chat picker |
-| `create` | mutation | partnerAdmin | Create a canned response (gated by `destructive_admin`) |
-| `update` | mutation | partnerAdmin | Update a canned response (gated by `destructive_admin`) |
-| `delete` | mutation | partnerAdmin | Delete a canned response (gated by `destructive_admin`) |
+| `create` | mutation | partnerAdmin | Create a canned response |
+| `update` | mutation | partnerAdmin | Update a canned response |
+| `delete` | mutation | partnerAdmin | Delete a canned response |
 | `regenerate` | mutation | partnerAdmin | Regenerate AI translations for a canned response |
 | `backfillUntranslated` | mutation | partnerAdmin | Bulk-backfill missing translations across the canned-response set |
 
@@ -69,9 +67,9 @@ B2B-guest gating is enforced **inside** procedure handlers via `trpcActor(ctx, {
 | Procedure | Type | Auth | Description |
 |-----------|------|------|-------------|
 | `list` | query | partnerScoped | List labels for current partner |
-| `create` | mutation | partnerAdmin | Create a new label (gated by `destructive_admin`) |
-| `update` | mutation | partnerAdmin | Update a label (gated by `destructive_admin`) |
-| `delete` | mutation | partnerAdmin | Delete a label by ID (gated by `destructive_admin`) |
+| `create` | mutation | partnerAdmin | Create a new label |
+| `update` | mutation | partnerAdmin | Update a label |
+| `delete` | mutation | partnerAdmin | Delete a label by ID |
 
 ## ticket
 
@@ -202,9 +200,9 @@ Config:
 | `getAiConfig` | query | partnerAdmin | Resolved AI config for the partner (provider, key reference, features) |
 | `getBusinessHours` | query | partnerScoped | Get business hours configuration |
 | `updateBusinessHours` | mutation | partnerAdmin | Update business hours schedule |
-| `updateDepartments` | mutation | partnerAdmin | Update department definitions (gated by `destructive_admin`) |
+| `updateDepartments` | mutation | partnerAdmin | Update department definitions |
 | `updateDashboardConfig` | mutation | partnerAdmin | Update dashboard staffing-fit thresholds and other partner-scoped dashboard knobs |
-| `updateDepartmentSla` | mutation | partnerAdmin | Update first-response SLA per department (gated by `destructive_admin`) |
+| `updateDepartmentSla` | mutation | partnerAdmin | Update first-response SLA per department |
 | `getAiCustomization` | query | partnerAdmin | Get per-partner AI prompt overrides |
 | `updateAiCustomization` | mutation | partnerAdmin | Update per-partner AI prompt overrides |
 
@@ -213,7 +211,7 @@ Members:
 | Procedure | Type | Auth | Description |
 |-----------|------|------|-------------|
 | `listMembers` | query | partnerAdmin | Roster for partner-side admin views |
-| `listAdmins` | query | partnerAdmin | Internal-only admin roster (gated by `audit_read`) |
+| `listAdmins` | query | partnerAdmin | Internal-only admin roster |
 | `memberStats` | query | partnerAdmin | Per-member aggregate stats for the team panel |
 | `updateMemberDepartments` | mutation | partnerAdmin | Update a member's department visibility (admin-only knob; surviving member-side mutation) |
 
@@ -223,8 +221,8 @@ Audit (`partner.audit.*`):
 |-----------|------|------|-------------|
 | `listActions` | query | partnerAdmin | Distinct audit-action values, partner-scoped |
 | `listTargetTypes` | query | partnerAdmin | Distinct target-type values, partner-scoped |
-| `getAuditLog` | query | partnerAdmin | Partner-scoped audit log (gated by `audit_read`) |
-| `getForTicket` | query | partnerAdmin | Per-ticket audit drawer feed (gated by `audit_read`) |
+| `getAuditLog` | query | partnerAdmin | Partner-scoped audit log |
+| `getForTicket` | query | partnerAdmin | Per-ticket audit drawer feed |
 | `exportAuditLog` | query | partnerAdmin | Partner-scoped audit log CSV export |
 
 ## webhook
@@ -232,12 +230,12 @@ Audit (`partner.audit.*`):
 | Procedure | Type | Auth | Description |
 |-----------|------|------|-------------|
 | `list` | query | partnerAdmin | List all webhooks for the current partner |
-| `create` | mutation | partnerAdmin | Create a new webhook endpoint with SSRF-validated URL (gated by `destructive_admin`) |
-| `update` | mutation | partnerAdmin | Update a webhook's URL, events, description, or active status (gated by `destructive_admin`) |
-| `regenerateSecret` | mutation | partnerAdmin | Regenerate the HMAC signing secret for a webhook (gated by `destructive_admin`) |
-| `delete` | mutation | partnerAdmin | Delete a webhook (gated by `destructive_admin`) |
+| `create` | mutation | partnerAdmin | Create a new webhook endpoint with SSRF-validated URL |
+| `update` | mutation | partnerAdmin | Update a webhook's URL, events, description, or active status |
+| `regenerateSecret` | mutation | partnerAdmin | Regenerate the HMAC signing secret for a webhook |
+| `delete` | mutation | partnerAdmin | Delete a webhook |
 | `logs` | query | partnerAdmin | Get recent delivery logs for a webhook |
-| `test` | mutation | partnerAdmin | Test-fire a webhook with a sample payload (gated by `destructive_admin`) |
+| `test` | mutation | partnerAdmin | Test-fire a webhook with a sample payload |
 
 ## linkPreview
 

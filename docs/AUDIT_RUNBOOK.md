@@ -226,7 +226,6 @@ the chain was broken AND the purge has refused to run as a precaution.
 | Shared runner persistence shape (latest + history) | `server/services/chainVerifySchedule.test.ts` |
 | Scheduler uses synthetic actor and marks `metadata.scheduled=true` | `server/services/chainVerifySchedule.test.ts` |
 | Verify rate limit is per-(partner+user) and fails open | `server/trpc/routers/__tests__/verifyAuditChainRateLimit.test.ts` |
-| Partner-scoped audit reads honour the `audit_read` capability | `server/trpc/routers/partner.audit.guestGating.test.ts` |
 | Archive write + chain hashing | `server/services/archive.test.ts` |
 | Ticket emitter increments metric before db.insert (ordering invariant) | `server/services/ticketLifecycle/audit.ts` (asserted indirectly by every lifecycle verb test — the metric tick is the first line of `writeAudit`) |
 | Audit write rolls back the whole lifecycle event on FK violation | `server/services/ticketLifecycle/{reclaim,leave,returnToQueue,assign,transfer,close,create}.test.ts` (each suite has a "transactional rollback" boundary case) |

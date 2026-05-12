@@ -140,7 +140,6 @@ async function setupLabelsHandler(actorOverrides: Record<string, unknown>) {
     role: 'agent',
     name: 'Test User',
     isPlatformOperator: false,
-    isExternal: false,
     lang: 'en',
     tokenExp: Math.floor(Date.now() / 1000) + 3600,
     ...actorOverrides,

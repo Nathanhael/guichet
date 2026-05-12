@@ -79,7 +79,6 @@ const PLATFORM_ACTIONS = [
   'sso.group_mapping_added',
   'sso.group_mapping_updated',
   'sso.group_mapping_removed',
-  'sso.guest_multi_partner_rejected',
   'sso.membership_auto_created',
   'sso.membership_revoked',
   'sso.no_matching_groups',

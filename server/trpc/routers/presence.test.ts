@@ -34,7 +34,6 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
   role: 'support',
   partnerId: 'partner-a',
   isPlatformOperator: false,
-  isExternal: false,
   lang: 'en',
   ...overrides,
 });

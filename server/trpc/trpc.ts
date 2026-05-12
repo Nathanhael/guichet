@@ -107,9 +107,3 @@ export const featureGate = (feature: DisabledFeature) =>
     return next();
   });
 
-// B2B-guest gating moved into `services/auth/capabilities.ts` (`destructive_admin`
-// rule) in Bundle A slice 6 (issue #71). Handlers now resolve the gate inline
-// via `trpcActor(ctx, { capability: 'destructive_admin' })` from
-// `services/auth/index.js`. Single source of truth for the rule lives next to
-// the rest of the capability vocabulary; per-call DB lookups are gone (the
-// flag travels on the JWT claim, refreshed atomically by `flipIsExternal`).

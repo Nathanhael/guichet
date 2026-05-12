@@ -71,7 +71,7 @@ powershell -File scripts/ci.ps1 -Skip e2e   # skip slow E2E
 
 Tests in this repo encode three things, and only these three:
 
-1. **Security invariants** — multi-tenant isolation, RBAC, audit chain integrity, refresh-token rotation, B2B guest restrictions, encryption boundaries.
+1. **Security invariants** — multi-tenant isolation, RBAC, audit chain integrity, refresh-token rotation, encryption boundaries.
 2. **Service-layer correctness** — business logic that fails silently if broken (audit hash chain, GDPR purge ordering, archive batching, transfer flow, SLA math, AI provider routing).
 3. **End-to-end wiring** — the assembled stack works: socket → tRPC → DB → auth round-trip per major user flow (agent, support, admin, platform).
 

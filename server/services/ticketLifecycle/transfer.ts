@@ -74,7 +74,6 @@ export async function runTransfer(
         senderName: args.actor.name,
         senderRole: args.actor.role,
         senderLang: args.actor.lang,
-        senderIsExternal: args.actor.isExternal,
         text: trimmedNote,
       });
     }

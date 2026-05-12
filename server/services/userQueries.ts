@@ -36,7 +36,6 @@ export async function findSenderInfo(userId: string, partnerId: string) {
       name: users.name,
       role: memberships.role,
       lang: users.lang,
-      isExternal: users.isExternal,
     })
     .from(users)
     .innerJoin(memberships, and(eq(memberships.userId, users.id), eq(memberships.partnerId, partnerId)))
@@ -50,7 +49,7 @@ export async function findSenderInfo(userId: string, partnerId: string) {
  */
 export async function findUserName(userId: string) {
   const rows = await db
-    .select({ name: users.name, isExternal: users.isExternal })
+    .select({ name: users.name })
     .from(users)
     .where(eq(users.id, userId));
   return rows[0];
