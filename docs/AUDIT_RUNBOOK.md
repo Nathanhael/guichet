@@ -178,8 +178,11 @@ Triggered by: amber `GDPR purge overdue` banner on the Health page (last
 
 ### GDPR purge aborted by chain failure
 
-If the most recent `[purge]` log entry shows `AUDIT_CHAIN_VERIFY_FAIL_MSG`,
-the chain was broken AND the purge has refused to run as a precaution.
+If the most recent `[purge]` log entry shows `PurgeAbortedError: GDPR purge
+aborted: chain_broken` (or `chain_infra_error`), the chain was broken AND
+the purge has refused to run as a precaution. The error's `reason.kind`
+distinguishes a genuine tamper (`chain_broken`) from an infra outage
+(`chain_infra_error`).
 
 1. Fix the chain first (section 4 or 5).
 2. Manually re-run the purge after chain is verified.

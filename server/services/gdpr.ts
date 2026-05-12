@@ -7,13 +7,9 @@ import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
 import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, users } from '../db/schema.js';
+import { PurgeAbortedError } from './gdpr/errors.js';
 
-/**
- * Error message thrown when the audit chain integrity check fails during a
- * GDPR purge. Exported so contract tests and observability code can refer to
- * it by name instead of hardcoding the string (prevents drift).
- */
-export const AUDIT_CHAIN_VERIFY_FAIL_MSG = 'GDPR purge aborted: audit chain verification failed';
+export { PurgeAbortedError, type PurgeAbortReason } from './gdpr/errors.js';
 
 export async function runDailyPurge() {
   // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
@@ -34,7 +30,11 @@ export async function runDailyPurge() {
       ? '[purge] Audit chain verification failed due to infrastructure error — aborting purge as precaution'
       : '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken';
     logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked, isInfraError }, message);
-    throw new Error(AUDIT_CHAIN_VERIFY_FAIL_MSG);
+    throw new PurgeAbortedError(
+      isInfraError
+        ? { kind: 'chain_infra_error', error: chainResult.error }
+        : { kind: 'chain_broken', brokenAt: chainResult.brokenAt, checked: chainResult.checked },
+    );
   } else if (chainResult.checked > 0) {
     logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
   }
