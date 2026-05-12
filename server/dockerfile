@@ -16,8 +16,9 @@ RUN npm install --legacy-peer-deps
 # --- Production Stage ---
 FROM node:24-alpine AS runner
 
-# Patch Alpine OS-level CVEs (e.g. CVE-2025-60876 busybox)
-RUN apk upgrade --no-cache && npm install -g npm@latest
+# Patch Alpine OS-level CVEs (e.g. CVE-2025-60876 busybox).
+# npm upgrade lives in the builder stage; runtime uses the base-image npm.
+RUN apk upgrade --no-cache
 
 WORKDIR /app
 
