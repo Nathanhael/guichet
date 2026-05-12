@@ -1,9 +1,9 @@
 /**
  * Shared AI action runner with rate-limiting, logging, and feature gating.
  *
- * Used by both the tRPC ai router and the fire-and-forget autoSummarize
- * service. Extracted to avoid duplicating the gate → limit → prompt → call → log
- * pipeline in multiple places.
+ * Single entry point for the tRPC ai router. Extracted to keep the
+ * gate → limit → prompt → call → log pipeline in one place so per-action
+ * code paths don't drift.
  *
  * ─── Model strategy (chosen 2026-05-10 after A/B sweep) ─────────────────────
  *
