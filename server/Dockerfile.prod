@@ -21,7 +21,9 @@ RUN npm ci --omit=dev \
 
 # Stage 3: Runtime
 FROM node:24-alpine
-RUN apk upgrade --no-cache && npm install -g npm@latest
+# Runtime executes `node dist/index.js` directly — npm is never invoked, so
+# no need to upgrade it in this stage. Keep apk upgrade for Alpine CVEs.
+RUN apk upgrade --no-cache
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
