@@ -47,7 +47,6 @@ const nl: Record<string, string> = {
     ticket_transferred_to: 'Ticket overgedragen naar',
     yes_close: 'Ja, sluiten',
     closing_notes_label: 'Afsluitnotities (optioneel)',
-    summarize_resolution: 'Vat de oplossing samen...',
     type_message: 'Typ een bericht…',
     send: 'Stuur',
     uploading: 'Uploaden\u2026',
