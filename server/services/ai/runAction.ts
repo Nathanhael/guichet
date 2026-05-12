@@ -159,19 +159,27 @@ export async function runAiAction(
     const latencyMs = Date.now() - start;
     const errorMessage = err instanceof Error ? err.message : String(err);
 
-    logUsage({
-      partnerId: opts.partnerId,
-      userId: loggedUserId,
-      action: opts.action,
-      provider: provider.name,
-      model: 'unknown',
-      inputTokens: 0,
-      outputTokens: 0,
-      latencyMs,
-      success: false,
-      errorMessage,
-      prompt: captureFull ? prompt : undefined,
-    });
+    // Await + inner try so a DB hiccup on the error path no longer swallows
+    // the anonymized log row silently. The inner catch ensures a logUsage
+    // rejection does not shadow the original provider error that the
+    // caller actually needs to see.
+    try {
+      await logUsage({
+        partnerId: opts.partnerId,
+        userId: loggedUserId,
+        action: opts.action,
+        provider: provider.name,
+        model: 'unknown',
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs,
+        success: false,
+        errorMessage,
+        prompt: captureFull ? prompt : undefined,
+      });
+    } catch (logErr) {
+      logger.warn({ err: logErr, action: opts.action, partnerId: opts.partnerId }, 'failed to write error-path usage log');
+    }
 
     logger.error({ err: errorMessage, action: opts.action, partnerId: opts.partnerId }, 'AI action failed');
     throw new TRPCError({
