@@ -20,3 +20,8 @@ export {
   type SlaSweeper,
   createSlaSweeper,
 } from './sweep.js';
+
+export {
+  type PartnerSlaContext,
+  extractPartnerSlaContext,
+} from './partnerContext.js';
