@@ -20,23 +20,14 @@ import { and, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
 import { db } from '../../db.js';
 import { partners, ratings, tickets } from '../../db/schema.js';
 import { calculatePercentile } from '../stats.js';
-import { resolveSchedule, type BusinessHoursSchedule } from '../businessHours.js';
-import { elapsedBusinessMinutes, type DepartmentSlaConfig } from '../sla/index.js';
+import type { BusinessHoursSchedule } from '../businessHours.js';
+import {
+  elapsedBusinessMinutes,
+  extractPartnerSlaContext,
+  type DepartmentSlaConfig,
+  type PartnerSlaContext,
+} from '../sla/index.js';
 import type { PeriodRollup } from './scorecard.js';
-
-interface PartnerDeptRaw {
-  id: string;
-  sla?: {
-    enabled?: boolean;
-    firstResponseMinutes?: number;
-    warnAtPercent?: number;
-  };
-}
-
-interface PartnerSlaContext {
-  slaMap: Map<string, DepartmentSlaConfig>;
-  schedule: BusinessHoursSchedule;
-}
 
 async function loadPartnerSlaContext(partnerId: string): Promise<PartnerSlaContext> {
   const rows = await db
@@ -48,23 +39,10 @@ async function loadPartnerSlaContext(partnerId: string): Promise<PartnerSlaConte
     .where(eq(partners.id, partnerId))
     .limit(1);
 
-  const slaMap = new Map<string, DepartmentSlaConfig>();
-  const depts = (rows[0]?.departments as PartnerDeptRaw[] | null) ?? [];
-  for (const dept of depts) {
-    if (dept?.id && dept.sla?.firstResponseMinutes) {
-      slaMap.set(dept.id, {
-        enabled: dept.sla.enabled !== false,
-        firstResponseMinutes: dept.sla.firstResponseMinutes,
-        warnAtPercent: typeof dept.sla.warnAtPercent === 'number' ? dept.sla.warnAtPercent : 80,
-      });
-    }
-  }
-
-  const schedule = resolveSchedule({
+  return extractPartnerSlaContext({
+    departments: rows[0]?.departments,
     businessHoursSchedule: rows[0]?.businessHoursSchedule as BusinessHoursSchedule | null | undefined,
   });
-
-  return { slaMap, schedule };
 }
 
 interface RollupTicketRow {
