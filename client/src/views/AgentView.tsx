@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
+import AiDisclosureBanner from '../components/AiDisclosureBanner';
 import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
@@ -157,7 +158,9 @@ export default function AgentView() {
   return (
     <ErrorBoundary>
     <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
-      <div className="h-screen flex flex-row overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)] relative">
+      <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)] relative">
+        <AiDisclosureBanner />
+        <div className="flex flex-row flex-1 overflow-hidden relative">
         <SystemBackground />
 
         {inChat && (
@@ -242,6 +245,7 @@ export default function AgentView() {
             <TicketForm manifest={manifest} />
           )}
         </main>
+        </div>
       </div>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}

@@ -17,6 +17,7 @@ import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
 import { useAiHealth } from '../../hooks/useAiHealth';
 import { useVoiceTranscribe } from '../../hooks/useVoiceTranscribe';
 import { useAutoTranslation } from '../../hooks/useTranslation';
+import { trpc } from '../../utils/trpc';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -52,6 +53,17 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const { user } = useStoreShallow(s => ({
     user: s.user,
   }));
+
+  // Per-user effective AI config — folds partner config with the caller's
+  // `memberships.aiOptOut` so the forced-improve mode degrades to optional
+  // for opted-out workers without the parent needing to know the rule.
+  // Falls back to the prop while the query is in flight; the prop carries
+  // the partner-level config which is correct for non-opt-out users and a
+  // safe approximation during the loading window.
+  const effectiveCfgQuery = trpc.ai.getEffectiveConfig.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const effectiveAiConfig = effectiveCfgQuery.data ?? aiConfig ?? null;
   // Transient signal published by useSocket when the server rejects an
   // outgoing message (content guard, repetition limit, …). The matching
   // optimistic bubble is removed in the slice action; here we surface a
@@ -148,7 +160,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     // improve needs.
     setText: compose.replaceText,
     isSupport,
-    aiConfig,
+    aiConfig: effectiveAiConfig,
     doSend: (finalText, opts) => doSend(finalText, opts),
   });
 
@@ -158,7 +170,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // toggle gates the actual button so the hook can stay always-mounted —
   // simpler than threading the gate through a conditional hook (forbidden
   // by React rules).
-  const voiceEnabled = !!aiConfig?.voiceTranscription && isSupport;
+  const voiceEnabled = !!effectiveAiConfig?.voiceTranscription && isSupport;
   const voice = useVoiceTranscribe({
     enabled: voiceEnabled,
     onTranscript: (transcript: string) => {
@@ -185,7 +197,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     text: replyingTo?.text ?? '',
     senderLang: replyingTo?.senderLang ?? '',
     viewerLang: user?.lang || 'en',
-    enabled: !!replyingTo && aiConfig?.translation === true,
+    enabled: !!replyingTo && effectiveAiConfig?.translation === true,
   });
   useEffect(() => {
     if (replyTranslation.needsTranslation) replyTranslation.translate();
