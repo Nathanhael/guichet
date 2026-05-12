@@ -3,6 +3,7 @@ import logger from '../utils/logger.js';
 import { Rooms } from '../utils/rooms.js';
 import type { TicketLifecycle } from '../services/ticketLifecycle/index.js';
 import type { MessageLifecycle } from '../services/messageLifecycle/index.js';
+import { createCommandBus } from './commandBus/index.js';
 import type { HandlerContext } from './handlers/types.js';
 import { setupRevocationPubSub, setupJwtMiddleware, setupIdentityMiddleware, register as registerAuth } from './handlers/auth.js';
 import { register as registerTicket } from './handlers/ticket.js';
@@ -35,12 +36,14 @@ export interface RegisterSocketHandlersDeps {
 
 export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersDeps) {
   ioInstance = io;
+  const bus = createCommandBus({ messageLifecycle: deps.messageLifecycle, io });
   const ctx: HandlerContext = {
     io,
     socketTickets,
     viewerKeyPrefix: VIEWER_KEY_PREFIX,
     lifecycle: deps.lifecycle,
     messageLifecycle: deps.messageLifecycle,
+    bus,
   };
 
   setupRevocationPubSub(io);

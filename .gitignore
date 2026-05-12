@@ -109,6 +109,7 @@ testing/
 !server/services/dashboard/*.test.ts
 !server/socket/*.test.ts
 !server/socket/handlers/*.test.ts
+!server/socket/commandBus/*.test.ts
 !server/middleware/*.test.ts
 !server/routes/*.test.ts
 !server/trpc/routers/*.test.ts

@@ -8,6 +8,7 @@ import logger from '../../utils/logger.js';
 import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import type { MessageLifecycle } from '../../services/messageLifecycle/index.js';
+import type { CommandBus } from '../commandBus/index.js';
 
 export interface HandlerContext {
   io: Server;
@@ -24,8 +25,19 @@ export interface HandlerContext {
    * Message-mutation lifecycle: `react` (PR 1), `edit`/`delete` (PR 2),
    * `send` (PR 3). Flat sibling to `lifecycle` rather than a `.message`
    * namespace — see issue #49 (decision Q8). Wired in `server/app.ts`.
+   *
+   * Direct use is retained for handlers that haven't been migrated to the
+   * SocketCommandBus yet (loadMore/delivered/read are read-path events and
+   * stay direct per the bus RFC).
    */
   messageLifecycle: MessageLifecycle;
+  /**
+   * SocketCommandBus — absorbs scope fetching, viewer-language collection,
+   * lifecycle dispatch, and domain-error → caller-event mapping. Handlers
+   * for `message:send` / `:edit` / `:delete` / `:react` shrink to
+   * parse → authz → bus.dispatch → applyCommandResult.
+   */
+  bus: CommandBus;
 }
 
 // ─── Socket Event Payload Schemas ─────────────────────────────────────────────
