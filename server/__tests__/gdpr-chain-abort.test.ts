@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { AUDIT_CHAIN_VERIFY_FAIL_MSG } from '../services/gdpr.js';
+import { PurgeAbortedError } from '../services/gdpr.js';
 
 const gdprSource = readFileSync(
   resolve(__dirname, '../services/gdpr.ts'),
@@ -42,12 +42,30 @@ describe('GDPR chain integrity abort (SEC-2)', () => {
     expect(verifyIdx).toBeLessThan(lastTryIdx);
   });
 
-  it('throw statement for chain integrity violation is present', () => {
-    // Import the constant and grep its value — any wording change updates
-    // both places automatically (prevents the drift that caused this bug
-    // in the first place).
-    expect(AUDIT_CHAIN_VERIFY_FAIL_MSG).toContain('audit chain');
-    expect(gdprSource).toContain(AUDIT_CHAIN_VERIFY_FAIL_MSG);
-    expect(gdprSource).toContain('throw new Error(AUDIT_CHAIN_VERIFY_FAIL_MSG)');
+  it('chain-broken throw uses structured PurgeAbortedError', () => {
+    // The throw must use the typed error so callers can branch on
+    // `reason.kind` instead of grepping log message strings. The throw
+    // also has to live BEFORE the swallowing try/catch — same invariant
+    // as the previous string-throw, just with a richer signal.
+    const throwIdx = gdprSource.indexOf('throw new PurgeAbortedError(');
+    expect(throwIdx).toBeGreaterThan(-1);
+
+    const catchMarker = "[purge] Error during daily purge";
+    const sourceUpToCatch = gdprSource.slice(0, gdprSource.indexOf(catchMarker));
+    const lastTryIdx = sourceUpToCatch.lastIndexOf('try {');
+    expect(throwIdx).toBeLessThan(lastTryIdx);
+  });
+
+  it('PurgeAbortedError carries a discriminated reason.kind', () => {
+    // Compile-time + runtime sanity: instantiating the error keeps the
+    // reason payload available to callers (the bug we want to make
+    // impossible: re-introducing a string-message-only abort).
+    const broken = new PurgeAbortedError({ kind: 'chain_broken', brokenAt: 'row-1', checked: 5 });
+    expect(broken).toBeInstanceOf(Error);
+    expect(broken.name).toBe('PurgeAbortedError');
+    expect(broken.reason.kind).toBe('chain_broken');
+
+    const infra = new PurgeAbortedError({ kind: 'chain_infra_error', error: 'verification_failed' });
+    expect(infra.reason.kind).toBe('chain_infra_error');
   });
 });
