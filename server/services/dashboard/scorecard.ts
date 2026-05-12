@@ -17,6 +17,7 @@
  */
 
 import { slaColor, type SlaBand } from './slaColor.js';
+import { round1 } from './shared.js';
 
 export interface PeriodRollup {
   totalTickets: number;
@@ -45,10 +46,6 @@ export interface Scorecard {
   sla: ScorecardCard;
   csat: ScorecardCard;
   volume: ScorecardCard;
-}
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }
 
 function slaPct(r: PeriodRollup): number | null {
