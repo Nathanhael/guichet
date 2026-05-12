@@ -1,1 +1,0 @@
-ALTER TABLE "partners" ADD COLUMN "dashboard_config" jsonb DEFAULT '{}'::jsonb NOT NULL;

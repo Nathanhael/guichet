@@ -1,1 +1,0 @@
-ALTER TABLE "daily_agent_status" ADD COLUMN "hourly_online_seconds" jsonb DEFAULT '[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]'::jsonb NOT NULL;
