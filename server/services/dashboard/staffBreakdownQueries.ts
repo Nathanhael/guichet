@@ -22,6 +22,7 @@ export interface StaffBreakdownData {
   staffNames: Map<string, string>;
 }
 
+/** @internal — call via `dashboard.compute({ metric: 'staffBreakdown' })`. */
 export async function fetchStaffBreakdownData(
   partnerId: string,
   from: Date,

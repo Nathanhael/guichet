@@ -95,6 +95,7 @@ export function classifyRollupRows(
   return { ticketsMetSla, ticketsWithResponse, responseMinutesList };
 }
 
+/** @internal — call via `dashboard.compute({ metric: 'scorecard' })`. */
 export async function fetchPeriodRollup(
   partnerId: string,
   from: Date,

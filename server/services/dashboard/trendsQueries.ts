@@ -16,6 +16,7 @@ import { db } from '../../db.js';
 import { dailyStats } from '../../db/schema.js';
 import type { TrendsDailyRow } from './trends.js';
 
+/** @internal — call via `dashboard.compute({ metric: 'trends' })`. */
 export async function fetchTrendsData(
   partnerId: string,
   from: Date,
