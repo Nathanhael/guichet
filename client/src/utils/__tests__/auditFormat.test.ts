@@ -41,7 +41,6 @@ const TEMPLATES: Record<string, string> = {
   audit_action_system_gdpr_purge: 'Purged {tickets}t {messages}m',
   audit_action_kb_created: 'KB: {title}',
   audit_action_label_created: 'Label: {name}',
-  audit_action_webhook_created: 'Webhook: {url}',
 };
 
 const t = (key: string): string => TEMPLATES[key] ?? key;
@@ -160,7 +159,7 @@ describe('formatAuditDetails — single-placeholder interpolation', () => {
     ).toBe('Revoked: ');
   });
 
-  it('system.archive_run, kb.created, label.created, webhook.created', () => {
+  it('system.archive_run, kb.created, label.created', () => {
     expect(
       formatAuditDetails({ action: 'system.archive_run', metadata: { count: 42 }, targetId: null }, t),
     ).toBe('Archived 42 records');
@@ -170,9 +169,6 @@ describe('formatAuditDetails — single-placeholder interpolation', () => {
     expect(
       formatAuditDetails({ action: 'label.created', metadata: { name: 'urgent' }, targetId: null }, t),
     ).toBe('Label: urgent');
-    expect(
-      formatAuditDetails({ action: 'webhook.created', metadata: { url: 'https://x' }, targetId: null }, t),
-    ).toBe('Webhook: https://x');
   });
 });
 

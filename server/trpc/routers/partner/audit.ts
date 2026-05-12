@@ -10,7 +10,6 @@ const PARTNER_ACTIONS = [
   'partner.config_updated',
   'label.created',
   'kb.created',
-  'webhook.created',
   'sso.membership_auto_created',
   'sso.role_synced',
   'sso.membership_revoked',
@@ -68,7 +67,6 @@ const PARTNER_TARGET_TYPES = [
   'partner',
   'label',
   'kb_article',
-  'webhook',
   'ticket',
 ] as const;
 

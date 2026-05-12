@@ -17,7 +17,6 @@ const {
   onConflictDoUpdateMock,
   selectLimitMock,
   verifyAuditChainMock,
-  broadcastWebhookMock,
 } = vi.hoisted(() => {
   const onConflictDoUpdateMock = vi.fn().mockResolvedValue(undefined);
   const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateMock });
@@ -35,7 +34,6 @@ const {
     onConflictDoUpdateMock,
     selectLimitMock,
     verifyAuditChainMock: vi.fn(),
-    broadcastWebhookMock: vi.fn(),
   };
 });
 
@@ -60,10 +58,6 @@ vi.mock('../utils/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('./webhookDispatch.js', () => ({
-  broadcastWebhook: broadcastWebhookMock,
-}));
-
 vi.mock('./archive.js', () => ({
   verifyAuditChain: verifyAuditChainMock,
 }));
@@ -84,7 +78,6 @@ describe('runChainVerify — persistence + return shape', () => {
     onConflictDoUpdateMock.mockClear();
     selectLimitMock.mockReset();
     selectLimitMock.mockResolvedValue([]);
-    broadcastWebhookMock.mockClear();
   });
 
   it('happy path: upserts LAST_VERIFY_KEY and prepends to VERIFY_HISTORY_KEY', async () => {
@@ -112,12 +105,11 @@ describe('runChainVerify — persistence + return shape', () => {
     expect(Array.isArray(history.value)).toBe(true);
     expect(history.value).toHaveLength(1);
 
-    // No audit rows / no webhook on success
+    // No audit rows on success
     expect(dbInsertMock).toHaveBeenCalledTimes(2);
-    expect(broadcastWebhookMock).not.toHaveBeenCalled();
   });
 
-  it('broken chain: writes audit_log system.chain_broken_detected and broadcasts critical webhook', async () => {
+  it('broken chain: writes audit_log system.chain_broken_detected with critical severity', async () => {
     verifyAuditChainMock.mockResolvedValueOnce({ valid: false, checked: 7, brokenAt: 'row-xyz' });
 
     const record = await runChainVerify({ id: 'op-2', name: 'Op Two' });
@@ -143,19 +135,9 @@ describe('runChainVerify — persistence + return shape', () => {
     expect(audit.targetId).toBe('row-xyz');
     expect(audit.metadata.severity).toBe('critical');
     expect(audit.metadata.scheduled).toBe(false);
-
-    // Webhook on critical
-    expect(broadcastWebhookMock).toHaveBeenCalledTimes(1);
-    const [event, payload] = broadcastWebhookMock.mock.calls[0] as [
-      string,
-      { brokenAt: string | null; ranBy: string },
-    ];
-    expect(event).toBe('audit.chain_broken');
-    expect(payload.brokenAt).toBe('row-xyz');
-    expect(payload.ranBy).toBe('op-2');
   });
 
-  it('service error: severity=warn, audit row=system.chain_verify_error, NO webhook broadcast', async () => {
+  it('service error: severity=warn, audit row=system.chain_verify_error', async () => {
     verifyAuditChainMock.mockResolvedValueOnce({
       valid: false,
       checked: 0,
@@ -172,9 +154,6 @@ describe('runChainVerify — persistence + return shape', () => {
     expect(auditRow).toBeDefined();
     const audit = auditRow![0] as { metadata: { severity: string } };
     expect(audit.metadata.severity).toBe('warn');
-
-    // Warn-level failures don't page — only hash tampers do.
-    expect(broadcastWebhookMock).not.toHaveBeenCalled();
   });
 
   it('scheduler-identity: actor=SCHEDULER_ACTOR_ID stamps metadata.scheduled=true', async () => {
