@@ -182,8 +182,8 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     expect(persisted.value.brokenAt).toBe('tampered-archive-row-id');
     expect(persisted.value.checked).toBe(3);
 
-    // The audit_log write marks the incident loudly so existing dashboards +
-    // any downstream webhook/alert consumer see it without extra wiring.
+    // The audit_log write marks the incident loudly so existing dashboards
+    // and the Platform Health socket push see it without extra wiring.
     const alertCall = valuesMock.mock.calls.find(
       c => (c[0] as { action?: string }).action === 'system.chain_broken_detected',
     );

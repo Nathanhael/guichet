@@ -295,12 +295,12 @@ describe('partnerAuditRouter.getAuditLog — targetType filter', () => {
   });
 
   it('adds eq(auditLog.targetType, input.targetType) when provided', async () => {
-    await makeCaller().getAuditLog({ limit: 50, targetType: 'webhook' });
+    await makeCaller().getAuditLog({ limit: 50, targetType: 'kb_article' });
 
     const conditions = capturedConditions[0] as { __op: string; col?: unknown; val?: unknown }[];
     const match = conditions.find(c => c.__op === 'eq' && c.col === auditLog.targetType);
     expect(match).toBeDefined();
-    expect(match?.val).toBe('webhook');
+    expect(match?.val).toBe('kb_article');
   });
 
   it('targetType filter NEVER replaces the partnerId scope', async () => {
@@ -352,7 +352,7 @@ describe('partnerAuditRouter.listTargetTypes', () => {
   it('returns the partner-scoped target-type allow-list', async () => {
     const result = await makeCaller().listTargetTypes();
     expect(Array.isArray(result)).toBe(true);
-    expect(result).toContain('webhook');
+    expect(result).toContain('kb_article');
     expect(result).toContain('membership');
     expect(result).toContain('user');
   });

@@ -28,7 +28,6 @@ const PLATFORM_TARGET_TYPES = [
   'group_mapping',
   'label',
   'kb_article',
-  'webhook',
   'system',
   'ticket',
 ] as const;
@@ -62,7 +61,6 @@ const PLATFORM_ACTIONS = [
   // content
   'kb.created',
   'label.created',
-  'webhook.created',
   // partner
   'partner.created',
   'partner.config_updated',
@@ -321,7 +319,7 @@ export const platformAuditRouter = router({
         .limit(1);
       // Delegate to the shared runner so manual and scheduled paths persist
       // identical record shapes to the same system_settings keys and share
-      // the same alert / webhook side-effects.
+      // the same alert / socket side-effects.
       return runChainVerify({ id: ctx.user.id, name: actor[0]?.name ?? null });
     }),
 

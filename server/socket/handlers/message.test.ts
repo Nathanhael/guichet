@@ -129,9 +129,6 @@ vi.mock('../../services/transferService.js', () => ({
   transferTicketToDepartment: vi.fn(),
 }));
 
-vi.mock('../../services/webhookDispatch.js', () => ({
-  dispatchWebhookEvent: vi.fn(async () => {}),
-}));
 
 // ---- Socket & IO mocks ----
 

@@ -202,7 +202,7 @@ export async function fetchOgData(url: string): Promise<LinkPreview | null> {
           'Accept': 'text/html',
           'User-Agent': 'GuichetBot/1.0 (+link-preview)',
         },
-        redirect: 'error', // SSRF: prevent redirects to internal IPs (mirrors webhookDispatch.ts)
+        redirect: 'error', // SSRF: prevent redirects to internal IPs (see isSafeUrl above for resolve-then-fetch)
       });
 
       clearTimeout(timeout);

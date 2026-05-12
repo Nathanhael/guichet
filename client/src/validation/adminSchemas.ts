@@ -24,13 +24,6 @@ export const kbArticleCreateSchema = z.object({
   published: z.boolean().optional(),
 });
 
-// ── Webhooks ────────────────────────────────────────────
-export const webhookCreateSchema = z.object({
-  url: z.string().url('Must be a valid URL').max(2000, 'Max 2000 characters'),
-  events: z.array(z.string()).min(1, 'Select at least one event'),
-  description: z.string().max(200, 'Max 200 characters').optional(),
-});
-
 // ── Departments ─────────────────────────────────────────
 export const departmentSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),

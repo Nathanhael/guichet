@@ -14,7 +14,7 @@ The database has been overhauled for type safety and performance:
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 - **System Configuration**: Added `system_settings` table to store global infrastructure parameters (like mail provider credentials) manageable via the Platform UI.
 - **AI & Analytics Tables**: `ai_prompt_templates` (per-partner prompt customization), `ai_usage_log` (provider usage tracking with token counts and latency), `ratings` (ticket CSAT), `app_feedback` (in-app user feedback).
-- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `partner_group_mappings` (SSO group→role/department mapping).
+- **Integration Tables**: `kb_articles` (per-partner knowledge base), `partner_group_mappings` (SSO group→role/department mapping).
 - **User Personalization**: `saved_views` (per-user saved ticket filter configurations per partner).
 
 ---
@@ -66,7 +66,7 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **Rotating Refresh Tokens**: Short-lived access tokens paired with `guichet_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). Family-based reuse detection revokes the entire token family on replay.
 - **Session Revocation**: Security-sensitive changes (partner status flip, SSO link removal, break-glass mint, user offboarding) revoke all sessions and refresh tokens for the affected user.
 - **WORM Audit Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Ticket archiving with message count summary.
-- **Field-Level Encryption at Rest**: AI provider API keys (`partners.ai_config.encryptedApiKey`) and webhook signing secrets are AES-GCM encrypted via `FIELD_ENCRYPTION_SECRET`. The service layer encrypts on write, decrypts on read; DB dumps remain opaque. `server/services/encryption.ts` is the single source of cleartext; rotation is handled by `server/scripts/rotate_encryption_key.ts`.
+- **Field-Level Encryption at Rest**: AI provider API keys (`partners.ai_config.encryptedApiKey`) are AES-GCM encrypted via `FIELD_ENCRYPTION_SECRET`. The service layer encrypts on write, decrypts on read; DB dumps remain opaque. `server/services/encryption.ts` is the single source of cleartext; rotation is handled by `server/scripts/rotate_encryption_key.ts`.
 - **Redis-Backed Rate Limiting**: `rate-limit-redis` store so replicas share counters instead of each maintaining its own bucket. Applied to `authLimiter`, `linkPreviewLimiter`, per-partner AI limiters.
 - **Bounded Invite Claim Window**: SSO-provisioned invite rows expire after `INVITE_TTL_DAYS` (currently 7) — older rows are ignored at the SSO callback. The scheduled `purgeAbandonedInvites` service drops them at 30 days. Guards against stale mailed-invite replay.
 - **JWT Algorithm Pinning**: All `jwt.verify()` calls specify `{ algorithms: ['HS256'] }` to prevent algorithm confusion attacks.
@@ -86,7 +86,6 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 - **Cross-Partner Activity Panel**: `trpc.platform.getCrossPartnerActivity` returns per-partner event totals + `lastEventAt` for the selected window. Top-N rollup (≤50 partners, 10 shown in UI). Click a row to scope the audit log below by `partnerId` — first-line signal for "which tenant is unusually noisy?" Aggregate-only by design; the scoped filter is where raw investigation happens.
 - **Partner-Scoped Audit Log** (`AdminAudit`): Partner admins see their slice + a per-admin verify-chain UI (no platform access required).
 - **Ticket Audit Drawer**: Every ticket row exposes its lifecycle events (`ticket.created` / `ticket.assigned` / `ticket.transferred` / `ticket.closed` / `ticket.reopened`) via `services/ticketLifecycle/audit.ts`. The emitter writes `ticket.*` actions into `audit_log`; the partner audit router and platform audit view filter `ticket.*` out by default so security-relevant rows stay uncluttered. Co-mingling would dilute the platform view and push chain hashing past its useful throughput.
-- **Chain-Broken Webhook**: Side-channel notification to partner-configured URL.
 - **Live Socket Push**: When `chainVerifySchedule` detects a critical break, the server emits `audit:chain:broken` to the `platform:operators` room so the Health page lights up instantly without waiting for the next poll.
 - **Staleness Banner** in the audit log when the last successful chain-verify is >24h old.
 - **JSON + CSV Export** of the filtered audit view.
@@ -126,10 +125,9 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 
 ---
 
-## 9. Knowledge Base, Webhooks & SLA
+## 9. Knowledge Base & SLA
 
 - **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
-- **Webhooks**: Partners configure webhook endpoints (`webhooks` table) with event subscriptions and HMAC signing secrets. `webhookDispatch.ts` delivers events with retry logic. Delivery history in `webhook_logs`. Admin UI in `AdminWebhooks`.
 - **SLA Monitoring**: Per-department first-response SLA (`sla_breaches` table + `tickets.first_staff_response_at`). Config in `AdminDepartments` (enable flag + threshold minutes + warn%). Breach worker (`services/sla.ts`) sweeps every `SLA_SWEEP_INTERVAL_MS` (default 60000, 0 disables). Business-hours-aware elapsed counter skips off-hours. `SlaIndicator` pill renders in `ChatHeader`; QueueSidebar adds a red left-border on breached rows. Burst alert (≥5 breaches in the last hour) is surfaced on the Health page as `slaBreachBurst`.
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
 
@@ -139,7 +137,7 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 
 - **Enterprise UI Patterns**: Long lists, such as the `PlatformAuditLog`, implement robust UX paradigms including sticky pagination bars and debounced searching (e.g., waiting 500ms before triggering a backend query) to reduce server load and improve client-side performance.
 - **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
-- **Component Organization**: `components/ui/` (11 design-system primitives — Avatar, Button, Card, FormModal, Modal, Pill, SectionLabel, SidebarNav, Toast, ToastProvider, UserMenuChip), `components/admin/` (22 panels — satisfaction, team, departments, tickets, business hours, labels, canned responses, KB, webhooks, feedback, archive, AI, audit, platform ops), `components/admin/dashboard/` (zone redesign — DashboardView, FilterBar, Scorecard, StaffingHeatmapZone, TrendsZone, DeptBreakdownTable, StaffBreakdownTable, OnboardingChecklist), `components/agent/` (3 — AgentChatHeader, AgentTicketContextPanel, TicketForm), `components/support/` (14 — QueueSidebar, ChatTabBar, TicketSidebar, CommandPalette, KeyboardShortcutsModal, SidebarFooter, SplitChatLayout, etc.), `components/chat/` (public surface: ChatHeader, ComposeArea, Message, MessageList, SearchBar, FormatToolbar, ImageLightbox, ImproveDiffModal, EmojiSuggestion; private internals reachable only through `<Message>`: AttachmentGrid, DeliveryStatus, MessageContent, LinkPreviewCard, QuoteBlock). Shared components at root level (ChatWindow, Toast, ConfirmDialog, BionicText, SlaIndicator, etc.).
+- **Component Organization**: `components/ui/` (11 design-system primitives — Avatar, Button, Card, FormModal, Modal, Pill, SectionLabel, SidebarNav, Toast, ToastProvider, UserMenuChip), `components/admin/` (21 panels — satisfaction, team, departments, tickets, business hours, labels, canned responses, KB, feedback, archive, AI, audit, platform ops), `components/admin/dashboard/` (zone redesign — DashboardView, FilterBar, Scorecard, StaffingHeatmapZone, TrendsZone, DeptBreakdownTable, StaffBreakdownTable, OnboardingChecklist), `components/agent/` (3 — AgentChatHeader, AgentTicketContextPanel, TicketForm), `components/support/` (14 — QueueSidebar, ChatTabBar, TicketSidebar, CommandPalette, KeyboardShortcutsModal, SidebarFooter, SplitChatLayout, etc.), `components/chat/` (public surface: ChatHeader, ComposeArea, Message, MessageList, SearchBar, FormatToolbar, ImageLightbox, ImproveDiffModal, EmojiSuggestion; private internals reachable only through `<Message>`: AttachmentGrid, DeliveryStatus, MessageContent, LinkPreviewCard, QuoteBlock). Shared components at root level (ChatWindow, Toast, ConfirmDialog, BionicText, SlaIndicator, etc.).
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
 - **Data Visualization**: Recharts for the dashboard zones (`TrendsZone`, `Scorecard`).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.

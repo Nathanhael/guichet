@@ -1,6 +1,6 @@
 # Guichet tRPC API Reference
 
-Reference for all tRPC procedures (19 routers).
+Reference for all tRPC procedures (18 routers).
 
 > **Live reference is canonical.** A dynamically-generated reference is served at `/api/v1/trpc-reference` and reflects the running build. This file is a stable, hand-curated overview — when in doubt, trust the live page or `server/trpc/router.ts` + the per-router files in `server/trpc/routers/`.
 
@@ -223,18 +223,6 @@ Audit (`partner.audit.*`):
 | `getAuditLog` | query | partnerAdmin | Partner-scoped audit log |
 | `getForTicket` | query | partnerAdmin | Per-ticket audit drawer feed |
 | `exportAuditLog` | query | partnerAdmin | Partner-scoped audit log CSV export |
-
-## webhook
-
-| Procedure | Type | Auth | Description |
-|-----------|------|------|-------------|
-| `list` | query | partnerAdmin | List all webhooks for the current partner |
-| `create` | mutation | partnerAdmin | Create a new webhook endpoint with SSRF-validated URL |
-| `update` | mutation | partnerAdmin | Update a webhook's URL, events, description, or active status |
-| `regenerateSecret` | mutation | partnerAdmin | Regenerate the HMAC signing secret for a webhook |
-| `delete` | mutation | partnerAdmin | Delete a webhook |
-| `logs` | query | partnerAdmin | Get recent delivery logs for a webhook |
-| `test` | mutation | partnerAdmin | Test-fire a webhook with a sample payload |
 
 ## linkPreview
 
