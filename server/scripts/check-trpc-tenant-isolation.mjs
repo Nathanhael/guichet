@@ -5,7 +5,6 @@
  *
  * Allowlist:
  *   - `support.ts` (cross-partner read for support workflows)
- *   - `testFixtures.ts` (E2E fixture API; non-prod only — Bundle D, RFC #82)
  *   - anything under `platform/` (platform operator surface)
  *
  * Platform operators cross tenants only via `platform.*` endpoints or by
@@ -35,13 +34,6 @@ function isAllowlisted(relPath) {
   const parts = relPath.split(/[\\/]/);
   const last = parts[parts.length - 1];
   if (last === 'support.ts') return true;
-  if (last === 'testFixtures.ts') return true;
-  // testFixtures.boundary.test.ts and other adjacent test files do not need
-  // partnerId in their schemas; the allowlist only kicks in for the router
-  // file itself, but the script walks .ts files broadly so we hit `.test.ts`
-  // and `.boundary.test.ts` too — let those through if they happen to mention
-  // partnerId for fixture-shape inputs.
-  if (last.startsWith('testFixtures.') && last.endsWith('.ts')) return true;
   if (parts[0] === 'platform') return true;
   return false;
 }

@@ -10,10 +10,9 @@ operational path.
 
 ## Design
 
-Guichet has no local password login. Authentication is Azure SSO only, plus
-a dev-login endpoint that is gated off in production. The break-glass path
-mints a short-lived platform-operator JWT directly via a CLI that must be run
-on the server host (or inside the server container).
+Guichet has no local password login. Authentication is Azure SSO only.
+The break-glass path mints a short-lived platform-operator JWT directly via
+a CLI that must be run on the server host (or inside the server container).
 
 The CLI lives at `server/scripts/break_glass.ts` and produces a `guichet_token`
 cookie value. Possession of the server's `JWT_SECRET` is the only credential —

@@ -33,9 +33,9 @@ const baseInput = z.object({
   dateTo: z.string().optional(),
 });
 
-// Audit rows emitted by `trpc.testFixtures.*` (Bundle D, RFC #82) use the
-// `audit.test_fixture.*` action namespace. Always filtered out of the
-// partner-facing audit views — partner admins should never see fixture noise.
+// Audit rows in the `audit.test_fixture.*` action namespace (legacy from
+// the removed E2E fixture API) are always filtered out of partner-facing
+// audit views — partner admins should never see fixture noise.
 const FIXTURE_ACTION_PATTERN = 'audit.test_fixture.%';
 
 function buildConditions(

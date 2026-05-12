@@ -1,13 +1,14 @@
 // server/services/ai/context.ts
 import type { RedisClientType } from 'redis';
 import type { db as _db } from '../../db/postgres.js';
-import type { partners, tickets, messages, aiPromptTemplates, aiUsageLog, systemSettings } from '../../db/schema.js';
+import type { partners, tickets, messages, memberships, aiPromptTemplates, aiUsageLog, systemSettings } from '../../db/schema.js';
 
 /** Typed Drizzle schema subset used by AI modules */
 export interface AiSchema {
   partners: typeof partners;
   tickets: typeof tickets;
   messages: typeof messages;
+  memberships: typeof memberships;
   aiPromptTemplates: typeof aiPromptTemplates;
   aiUsageLog: typeof aiUsageLog;
   systemSettings: typeof systemSettings;

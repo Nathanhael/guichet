@@ -3,6 +3,16 @@
 All notable changes to Guichet are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-05-12 — Remove seed scripts, demo login, and E2E suite
+
+- Deleted seed scripts: `server/seed.ts`, `server/scripts/seed_dashboard_data.ts`, `server/scripts/add_lang_tickets.ts`, `server/scripts/cleanup_e2e_orphans.ts`. Local dev now uses Azure SSO or the break-glass CLI exclusively; no truncate-and-reseed shortcut.
+- Deleted dev-login auth route (`server/routes/auth/devLogin.ts`) + the `DemoUserPicker` UI on the login screen. The `DEMO_MODE` env var + production-config check are gone.
+- Deleted the entire `testing/e2e/` Playwright suite (~104 specs + helpers + global setup). Dropped `@playwright/test` devDep and `playwright.config.ts`. CI script `scripts/ci.ps1` no longer has `e2e` or `e2e-skip-guard` steps.
+- Deleted the `testFixtures` tRPC router + its tests (`server/trpc/routers/testFixtures*.ts`). The `seedTestHash` availability port method + adapter implementations are gone. `userRouter.demoList` proc is gone.
+- Removed the `/api/v1/seed-e2e` test-only endpoint in `server/app.ts`.
+
+Local dev DB still has data from the last `seed.ts` run before its deletion; the migration squash earlier today produced a fresh schema, and the DB will accumulate state organically going forward (or you wipe + re-migrate manually).
+
 ## 2026-05-12 — Remove Azure B2B guest support + capability machinery
 
 - Dropped `users.is_external` and `messages.sender_is_external` columns (migration 0018).

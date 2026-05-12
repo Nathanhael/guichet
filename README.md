@@ -37,12 +37,9 @@ cp .env.example .env
 
 # 2. Start development
 docker compose up
-
-# 3. Reset database (truncates all tables, then seeds a single dev tenant + users)
-docker compose exec server npx tsx seed.ts
 ```
 
-Open `http://localhost:3001`. Guichet uses SSO for partner authentication. For local development, you can log in as the platform operator to configure the system.
+Open `http://localhost:3001`. Guichet uses Azure SSO for all authentication. For local development, configure SSO env vars (`AZURE_AD_*`) and the platform operator email (`PLATFORM_ADMIN_EMAIL`) — the bootstrap service auto-creates the first operator on startup.
 
 ### First-Time Production Setup
 
@@ -68,9 +65,6 @@ docker compose exec client npm test          # Client tests (Vitest + jsdom)
 # TypeScript
 docker compose exec server npx tsc --noEmit
 docker compose exec client npx tsc --noEmit
-
-# E2E tests (Playwright — runs on host)
-npx playwright test
 
 # Local CI (all checks)
 powershell -File scripts/ci.ps1
@@ -108,7 +102,7 @@ guichet/
 │       ├── views/        # Page views (Platform, Admin, Support, Agent, Login)
 │       ├── store/        # Zustand slices
 │       └── hooks/        # Socket, i18n, store hooks
-└── testing/         # k6 load tests + Playwright E2E
+└── testing/         # k6 load tests
 ```
 
 ## License
