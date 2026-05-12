@@ -9,6 +9,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // have to render a real prosemirror view.
 // ---------------------------------------------------------------------------
 
+// Mock trpc — ComposeArea now reads `ai.getEffectiveConfig` to apply the
+// per-user opt-out override. Return the partner-level config straight back
+// so the voice/forced-mode gates behave as configured in the test props.
+vi.mock('../../../utils/trpc', () => ({
+  trpc: {
+    ai: {
+      getEffectiveConfig: {
+        useQuery: () => ({ data: undefined, isLoading: false }),
+      },
+    },
+  },
+}));
+
 vi.mock('@tiptap/react', () => ({
   useEditor: () => ({
     storage: { characterCount: { characters: () => 0 } },

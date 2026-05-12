@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
+import AiDisclosureBanner from '../components/AiDisclosureBanner';
 import useStore from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getSocket } from '../hooks/useSocket';
@@ -424,6 +425,7 @@ export default function SupportView() {
   return (
     <ErrorBoundary>
     <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
+      <AiDisclosureBanner />
       {/* Business hours notice bar */}
       {businessHoursStatus && !businessHoursStatus.isOpen && (
         <div className="px-8 py-2 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-b border-[var(--color-border)] text-xs font-bold">
