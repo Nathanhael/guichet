@@ -116,6 +116,31 @@ describe('runAiAction — opt-out anonymisation', () => {
     expect(entry.errorMessage).toContain('upstream timeout');
   });
 
+  it('swallows logUsage rejection on the error path and still throws the original provider error', async () => {
+    // Regression: prior to the review-feedback fix, the error-path logUsage
+    // call was fire-and-forget. If logUsage rejected (e.g. DB hiccup), the
+    // rejection was unhandled and the anonymized row was silently lost.
+    // Now the call is awaited inside a try/catch — verify both that the
+    // primary throw is preserved and that a logUsage failure does not
+    // shadow it.
+    mockIsUserOptedOut.mockResolvedValue(true);
+    mockGetProvider.mockResolvedValue({
+      name: 'fake',
+      chat: vi.fn().mockRejectedValue(new Error('upstream timeout')),
+      chatStream: vi.fn(),
+      isAvailable: vi.fn(),
+    });
+    mockLogUsage.mockRejectedValueOnce(new Error('db connection lost'));
+
+    // The caller still sees the AI-service unavailable error, NOT the db error.
+    await expect(runAiAction(baseOpts)).rejects.toMatchObject({
+      message: expect.stringContaining('AI service unavailable'),
+    });
+    // logUsage was still attempted with userId nulled.
+    expect(mockLogUsage).toHaveBeenCalledTimes(1);
+    expect(mockLogUsage.mock.calls[0][0].userId).toBeNull();
+  });
+
   it('runs the provider chat call regardless of opt-out (functional preservation)', async () => {
     mockIsUserOptedOut.mockResolvedValue(true);
     const provider = fakeProvider();

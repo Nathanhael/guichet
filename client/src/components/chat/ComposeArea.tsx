@@ -57,13 +57,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // Per-user effective AI config — folds partner config with the caller's
   // `memberships.aiOptOut` so the forced-improve mode degrades to optional
   // for opted-out workers without the parent needing to know the rule.
-  // Falls back to the prop while the query is in flight; the prop carries
-  // the partner-level config which is correct for non-opt-out users and a
-  // safe approximation during the loading window.
+  //
+  // During the loading window we DO NOT trust the `aiConfig` prop for the
+  // `forced` mode — that would briefly auto-improve and log an outgoing
+  // message for an opted-out worker who pressed Enter before the query
+  // resolved. Conservative fallback: degrade `forced -> optional` while
+  // the effective config is unknown; the sparkle button is still
+  // available, the auto-rewrite-on-send is not.
   const effectiveCfgQuery = trpc.ai.getEffectiveConfig.useQuery(undefined, {
     enabled: !!user,
   });
-  const effectiveAiConfig = effectiveCfgQuery.data ?? aiConfig ?? null;
+  const effectiveAiConfig = effectiveCfgQuery.data ?? (
+    aiConfig?.messageImprovement === 'forced'
+      ? { ...aiConfig, messageImprovement: 'optional' as const }
+      : aiConfig ?? null
+  );
   // Transient signal published by useSocket when the server rejects an
   // outgoing message (content guard, repetition limit, …). The matching
   // optimistic bubble is removed in the slice action; here we surface a
