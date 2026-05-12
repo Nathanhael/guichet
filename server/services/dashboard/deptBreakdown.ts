@@ -11,10 +11,9 @@
  * primary line, this is the second.
  */
 
-export interface DateWindow {
-  from: Date;
-  to: Date;
-}
+import { inWindow, round1, type DateWindow } from './shared.js';
+
+export type { DateWindow };
 
 export interface DeptConfig {
   id: string;
@@ -76,14 +75,6 @@ interface Bucket {
   ratingSum: number;
   ratingCount: number;
   breachCount: number;
-}
-
-function inWindow(t: Date, w: DateWindow): boolean {
-  return t.getTime() >= w.from.getTime() && t.getTime() <= w.to.getTime();
-}
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }
 
 export function buildDeptBreakdown(input: DeptBreakdownInput): DeptRow[] {

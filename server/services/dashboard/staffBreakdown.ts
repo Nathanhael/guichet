@@ -13,10 +13,9 @@
  * Defense-in-depth: every row's `partnerId` is verified against input.
  */
 
-export interface DateWindow {
-  from: Date;
-  to: Date;
-}
+import { inWindow, round1, type DateWindow } from './shared.js';
+
+export type { DateWindow };
 
 export interface RawStaffTicketRow {
   id: string;
@@ -57,14 +56,6 @@ interface Bucket {
   responseCount: number;
   ratingSum: number;
   ratingCount: number;
-}
-
-function inWindow(t: Date, w: DateWindow): boolean {
-  return t.getTime() >= w.from.getTime() && t.getTime() <= w.to.getTime();
-}
-
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
 }
 
 export function buildStaffBreakdown(input: StaffBreakdownInput): StaffRow[] {
