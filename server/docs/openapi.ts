@@ -23,7 +23,7 @@ export const openapiSpec = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'JWT token obtained from /auth/login (SSO) or /auth/dev-login',
+        description: 'JWT token obtained from /auth/login (SSO)',
       },
     },
     schemas: {

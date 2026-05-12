@@ -35,7 +35,6 @@ services:
       - DEBUG=socket.io:*
       - CORS_ORIGIN=http://localhost:5173,http://client:5173,http://localhost:3001,http://lb:80
       - COOKIE_SECURE=false
-      - DEMO_MODE=${DEMO_MODE:-false}
       - REQUIRE_PLATFORM_STEP_UP=${REQUIRE_PLATFORM_STEP_UP:-false}
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
       - AI_ENABLED=${AI_ENABLED:-false}

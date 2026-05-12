@@ -39,7 +39,6 @@ fail-closed at server boot.
 | `AZURE_AD_REDIRECT_URI` | yes | `https://<prod-domain>/api/v1/auth/azure/callback`. Must match the Entra app registration exactly (path, scheme, host, port). |
 | `AZURE_STORAGE_CONNECTION_STRING` | yes | Presence enables the Azure Blob backend; without it uploads fall back to local disk inside the container (lost on revision swap). |
 | `AZURE_STORAGE_CONTAINER` | recommended | Defaults to `uploads`. Created automatically if missing. |
-| `DEMO_MODE` | must be unset/false | Server FATALs at boot if `true`. Trial deployments only. |
 | `AI_ENABLED` | optional | Default `false`. If you turn it on you must also set `AI_PROVIDER`, `AI_BASE_URL`, `AI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT`, and the encryption key above. |
 
 ### AOAI quota requests (T-7 days, parallel to image builds)
@@ -130,7 +129,7 @@ Steps when prod sub is provisioned and custom domain is registered:
 - [ ] Update server `COOKIE_DOMAIN=.example.com` env var
 - [ ] Update server `CORS_ORIGIN=https://app.example.com`
 - [ ] Update `FRONTEND_URL=https://app.example.com`
-- [ ] Verify dev-login + Azure SSO + ticket flow work via SWA URL
+- [ ] Verify Azure SSO + ticket flow work via SWA URL
 - [ ] Cleanup: delete `ca-guichet-client` Container App + `guichet-client` ACR repo
 - [ ] Saving: ~€12/month (~€144/year)
 

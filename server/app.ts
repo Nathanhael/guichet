@@ -401,20 +401,6 @@ v1Router.get('/health', async (_req: Request, res: Response) => {
   res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', ...checks });
 });
 
-// Internal E2E Seeding Endpoint — test environments only
-if (process.env.NODE_ENV === 'test') {
-  v1Router.post('/seed-e2e', async (_req: Request, res: Response) => {
-    try {
-      const { execSync } = await import('child_process');
-      execSync('npx tsx seed.ts --e2e', { stdio: 'inherit' });
-      res.json({ success: true });
-    } catch (err) {
-      logger.error({ err }, 'E2E Seed endpoint failed');
-      res.status(500).json({ error: String(err) });
-    }
-  });
-}
-
 app.use('/api/v1', v1Router);
 
 const gdprRunner = createTaskRunner('gdpr-purge');

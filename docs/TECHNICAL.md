@@ -50,7 +50,6 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 ## 5. SSO-Only Identity Model
 
 - **Azure Entra SSO (sole login path)**: All users — platform operators, partner admins, support, agents — authenticate through Azure OIDC. The `users` table carries no password, MFA, lockout, or step-up columns.
-- **Dev-login (non-prod only)**: `/api/v1/auth/dev-login` mints JWTs by `userId` for the demo picker and Playwright suite. Returns 404 when `NODE_ENV=production`.
 - **Break-glass CLI**: Emergency access when SSO is down. `server/scripts/break_glass.ts` mints a short-lived JWT (1–60m, default 15m) for a platform operator, enforces `isPlatformOperator`, and writes an `auth.break_glass` audit row. See `docs/BREAK_GLASS_RUNBOOK.md`.
 - **Pre-Provisioning**: Operators define authorization (roles/partners) before the user ever arrives; the first SSO login stamps `users.external_id` from the Azure OID.
 - **Platform Operator Bootstrap**: On first startup, the server checks for existing platform operators. If none exist and `PLATFORM_ADMIN_EMAIL` is set, it auto-creates (or promotes) the initial operator. Race-safe for multi-replica deployments. Subsequent logins go through SSO.
@@ -69,7 +68,6 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **WORM Audit Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Ticket archiving with message count summary.
 - **Field-Level Encryption at Rest**: AI provider API keys (`partners.ai_config.encryptedApiKey`) and webhook signing secrets are AES-GCM encrypted via `FIELD_ENCRYPTION_SECRET`. The service layer encrypts on write, decrypts on read; DB dumps remain opaque. `server/services/encryption.ts` is the single source of cleartext; rotation is handled by `server/scripts/rotate_encryption_key.ts`.
 - **Redis-Backed Rate Limiting**: `rate-limit-redis` store so replicas share counters instead of each maintaining its own bucket. Applied to `authLimiter`, `linkPreviewLimiter`, per-partner AI limiters.
-- **Dev-Login Mount-Gated**: `/api/v1/auth/dev-login` is registered in `app.ts` only when `NODE_ENV !== 'production'`; the route is **absent** (not just 403) in prod builds. Removes the attack surface entirely rather than relying on a handler-level check.
 - **Bounded Invite Claim Window**: SSO-provisioned invite rows expire after `INVITE_TTL_DAYS` (currently 7) — older rows are ignored at the SSO callback. The scheduled `purgeAbandonedInvites` service drops them at 30 days. Guards against stale mailed-invite replay.
 - **JWT Algorithm Pinning**: All `jwt.verify()` calls specify `{ algorithms: ['HS256'] }` to prevent algorithm confusion attacks.
 - **CSP Headers**: Helmet configured with Content Security Policy for XSS mitigation.
@@ -111,7 +109,7 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 ## 7. Communication & Activity
 
 - **Canned Responses**: Per-partner response templates with title, body, shortcut key, and category. CRUD management for admins, `/` picker in chat for support agents.
-- **User Activity Lifecycle**: The system tracks `last_active_at` for all users at every SSO login and dev-login, providing real-time visibility into platform adoption.
+- **User Activity Lifecycle**: The system tracks `last_active_at` for all users at every SSO login, providing real-time visibility into platform adoption.
 
 ---
 

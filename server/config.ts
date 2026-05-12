@@ -61,7 +61,6 @@ const configSchema = z.object({
     FRONTEND_URL: z.string().url().default('http://localhost:3001'),
     DISABLE_RATE_LIMIT: z.string().default('false').transform(v => v === 'true'),
     NODE_ENV: z.string().default('development'),
-    DEMO_MODE: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -104,7 +103,6 @@ const parseResult = configSchema.safeParse({
     FRONTEND_URL: process.env.FRONTEND_URL,
     DISABLE_RATE_LIMIT: process.env.DISABLE_RATE_LIMIT,
     NODE_ENV: process.env.NODE_ENV,
-    DEMO_MODE: process.env.DEMO_MODE,
 });
 
 if (!parseResult.success) {
@@ -144,8 +142,6 @@ if (config.NODE_ENV === 'production') {
         fatal.push('FIELD_ENCRYPTION_SECRET and AI_KEY_ENCRYPTION_SECRET are both set but differ — the encryption service prefers FIELD_ENCRYPTION_SECRET, so data encrypted with AI_KEY_ENCRYPTION_SECRET will be undecryptable. Unset one, or align both to the same value.');
     if (!config.COOKIE_SECURE)
         fatal.push('COOKIE_SECURE is false — cookies will not be sent over HTTPS');
-    if (config.DEMO_MODE)
-        fatal.push('DEMO_MODE is enabled — demo credentials are exposed on public endpoints');
 
     for (const w of warn) console.warn(`⚠ PRODUCTION WARNING: ${w}`);
     if (fatal.length) {

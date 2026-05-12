@@ -18,7 +18,6 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 | `COOKIE_DOMAIN` | `.example.com` | Set if using subdomains |
 | `PLATFORM_ADMIN_EMAIL` | `admin@example.com` | Auto-creates platform operator on first boot |
 | `FIELD_ENCRYPTION_SECRET` | 64-char hex string | **Required** when `AI_ENABLED=true` (server FATALs at boot otherwise). Encrypts AI keys + webhook secrets at rest. |
-| `DEMO_MODE` | `false` | **Must be `false` (or unset) in production** — server FATALs at boot if true. Trial / demo deployments only. |
 | `ACCESS_TOKEN_EXPIRY` | `15m` | JWT access-token lifetime (default `15m`). |
 | `REFRESH_TOKEN_EXPIRY` | `7d` | Refresh-token lifetime (default `7d`). The `guichet_refresh` HttpOnly cookie is path-restricted to `/api/v1/auth/refresh` — make sure ingress / WAF rules don't strip cookies on that path. |
 
