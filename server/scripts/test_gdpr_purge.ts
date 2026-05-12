@@ -62,9 +62,9 @@ async function seed() {
     updatedAt: oldDate,
   });
 
-  // createdAt = NOW (not oldDate) so purgeAbandonedInvites() doesn't sweep them as
-  // unclaimed >30d invites. externalId set so isNull(externalId) check skips them too.
-  // (Belt-and-braces: real SSO users have externalId; abandoned invites don't.)
+  // createdAt = NOW + externalId set so these test users look like real SSO
+  // accounts. (Historic note: the abandoned-invite sweep used to live in the
+  // purge and would have caught externalId=null rows older than 30 days.)
   await db.insert(users).values([
     { id: AGENT_ID, externalId: `azure-${AGENT_ID}`, name: 'GDPR Agent', email: `gdpr-agent-${ts}@test.local` },
     { id: SUPPORT_ID, externalId: `azure-${SUPPORT_ID}`, name: 'GDPR Support', email: `gdpr-support-${ts}@test.local` },
