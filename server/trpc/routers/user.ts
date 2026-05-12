@@ -1,11 +1,10 @@
-import { router, platformProcedure, publicProcedure, protectedProcedure } from '../trpc.js';
-import config from '../../config.js';
+import { router, platformProcedure, protectedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { revokeUserSessions } from '../../services/auth/index.js';
 import { db } from '../../db.js';
-import { auditLog, users, memberships, partners } from '../../db/schema.js';
-import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';
+import { auditLog, users, memberships } from '../../db/schema.js';
+import { eq, isNull, desc, asc, sql, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { wrapError } from '../../utils/trpcErrors.js';
 
@@ -39,64 +38,6 @@ export const userRouter = router({
         return { users: userRows, total };
       } catch (err: unknown) {
         wrapError(err, 'list users');
-      }
-    }),
-
-  /** Public demo user list — only available when DEMO_MODE=true */
-  demoList: publicProcedure
-    .query(async () => {
-      if (!config.DEMO_MODE) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
-      }
-      try {
-        // IM-04: Only return minimum fields for demo login UI — no privilege exposure
-        // Return per-membership entries so each role+partner combo is distinct.
-        // This prevents the old bug where Map() non-deterministically picked a role
-        // for multi-membership users, causing role mismatch between picker and routing.
-        const membershipRows = await db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            lang: users.lang,
-            isPlatformOperator: users.isPlatformOperator,
-            membershipId: memberships.id,
-            role: memberships.role,
-            partnerId: memberships.partnerId,
-            partnerName: partners.name,
-          })
-          .from(users)
-          .innerJoin(memberships, eq(users.id, memberships.userId))
-          .innerJoin(partners, and(eq(memberships.partnerId, partners.id), eq(partners.status, 'active')))
-          .where(isNull(users.deletedAt))
-          .orderBy(asc(users.name), asc(partners.name));
-
-        // Platform operators may have no memberships — include them as standalone entries
-        const membershipUserIds = new Set(membershipRows.map(r => r.id));
-        const platformRows = await db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            lang: users.lang,
-            isPlatformOperator: users.isPlatformOperator,
-          })
-          .from(users)
-          .where(and(isNull(users.deletedAt), eq(users.isPlatformOperator, true)));
-
-        const standaloneOperators = platformRows
-          .filter(p => !membershipUserIds.has(p.id))
-          .map(p => ({
-            ...p,
-            membershipId: null as string | null,
-            role: null as string | null,
-            partnerId: null as string | null,
-            partnerName: null as string | null,
-          }));
-
-        return [...membershipRows, ...standaloneOperators];
-      } catch (err: unknown) {
-        wrapError(err, 'demo list users');
       }
     }),
 

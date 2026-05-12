@@ -133,6 +133,24 @@ export default function UserMenuChip({
   const setLocale = trpc.user.setLocale.useMutation({
     onSuccess: () => utils.user.getLocaleInfo.invalidate(),
   });
+  // GDPR Art. 21 anonymization toggle. The query is partner-scoped; skip it
+  // while the user is in the platform cockpit (no active partner membership).
+  const aiConfigQuery = trpc.ai.getEffectiveConfig.useQuery(undefined, {
+    enabled: !!user && !!activeMembershipId,
+  });
+  const aiCfg = aiConfigQuery.data;
+  const aiOptOut = aiCfg?.aiOptOut ?? false;
+  const partnerMessageImprovement = aiCfg?.partnerMessageImprovement ?? 'off';
+  const anyAiFeatureOn = !!aiCfg && (
+    aiCfg.translation === true ||
+    aiCfg.voiceTranscription === true ||
+    aiCfg.cannedTranslation === true ||
+    (aiCfg.messageImprovement !== 'off' && aiCfg.messageImprovement !== undefined) ||
+    partnerMessageImprovement !== 'off'
+  );
+  const setOptOut = trpc.ai.setOptOut.useMutation({
+    onSuccess: () => utils.ai.getEffectiveConfig.invalidate(),
+  });
   const currentLang = selectedLang || user?.lang || 'en';
   const info = localeInfoQuery.data;
   const showLangSsoBadge = !!user && !!info?.hasSso && !info.langLocked;
@@ -271,6 +289,10 @@ export default function UserMenuChip({
   function handleKeyboardShortcuts() {
     setOpen(false);
     onKeyboardShortcuts?.();
+  }
+
+  function handleAiOptOutToggle() {
+    setOptOut.mutate({ optOut: !aiOptOut });
   }
 
   return (
@@ -447,6 +469,35 @@ export default function UserMenuChip({
               ))}
             </div>
           </div>
+
+          {anyAiFeatureOn && (
+            <div className="border-b border-[var(--color-border)]">
+              <div className={SECTION}>{t('ai_section_title')}</div>
+              <div className="px-3.5 pb-2.5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-4">
+                  <span className={LABEL}>{t('ai_anonymize_toggle')}</span>
+                  <ToggleSwitch
+                    enabled={aiOptOut}
+                    onToggle={handleAiOptOutToggle}
+                    label={t('ai_anonymize_toggle')}
+                  />
+                </div>
+                <p className="text-[11px] text-[var(--color-ink-muted)] leading-snug">
+                  {t('ai_anonymize_help')}
+                </p>
+                {aiOptOut && partnerMessageImprovement === 'forced' && (
+                  <p className="text-[11px] text-[var(--color-ink-muted)] leading-snug">
+                    {'↳ '}{t('ai_anonymize_forced_note')}
+                  </p>
+                )}
+                {aiOptOut && (
+                  <p className="text-[11px] text-[var(--color-ink-muted)] leading-snug italic">
+                    {t('ai_anonymize_irreversible_help')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className={SECTION}>{t('accessibility')}</div>
           <div className={ROW}>

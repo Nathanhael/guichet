@@ -1,6 +1,6 @@
 # Guichet tRPC API Reference
 
-Reference for all tRPC procedures (19 routers, plus `testFixtures` registered only when `NODE_ENV !== 'production'`).
+Reference for all tRPC procedures (19 routers).
 
 > **Live reference is canonical.** A dynamically-generated reference is served at `/api/v1/trpc-reference` and reflects the running build. This file is a stable, hand-curated overview — when in doubt, trust the live page or `server/trpc/router.ts` + the per-router files in `server/trpc/routers/`.
 
@@ -140,7 +140,6 @@ Client access: `trpc.<router>.<procedure>`
 |-----------|------|------|-------------|
 | `me` | query | protected | Authenticated user's identity, memberships, and preferences |
 | `list` | query | platform | List all users (platform-wide) |
-| `demoList` | query | public | List demo users (only when `DEMO_MODE=true` — non-prod only) |
 | `revokeSessions` | mutation | platform | Force sign-out all sessions + refresh-token families for a user |
 | `getLocaleInfo` | query | protected | Resolve current locale + supported locales |
 | `setLocale` | mutation | protected | Persist the user's preferred locale |
@@ -249,10 +248,6 @@ Audit (`partner.audit.*`):
 |-----------|------|------|-------------|
 | `getTicketState` | query | partnerScoped | Per-ticket SLA state (elapsed, target, breach status) for the chat header pill |
 | `listBreaches` | query | partnerAdmin | Recent SLA breaches for the partner |
-
-## testFixtures (non-prod only)
-
-Registered only when `NODE_ENV !== 'production'`. Used by the Playwright suite to pre-seed and tear down state. Do not call from production client code; the router does not exist there.
 
 ---
 

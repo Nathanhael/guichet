@@ -56,6 +56,7 @@ import { stripPromptArtifacts } from './prompts.js';
 import { getAiContext } from './context.js';
 import { getEffectiveAuditVerbosity } from './auditVerbosity.js';
 import { applyPartnerCustomization } from './promptCustomization.js';
+import { isUserOptedOut } from './optOut.js';
 
 type AiFeature =
   | 'messageImprovement'
@@ -103,6 +104,11 @@ export async function runAiAction(
     });
   }
 
+  // 2b. GDPR Art. 21: if this membership has opted out of personal AI
+  // tracking, log the row with user_id = NULL. Feature runs unchanged.
+  const anonymize = await isUserOptedOut(opts.partnerId, opts.userId);
+  const loggedUserId = anonymize ? null : opts.userId;
+
   // 3. Build prompt — apply partner glossary + custom-instruction prefix
   //    BEFORE interpolating user vars. Glossary placeholders ({{preserve_terms}},
   //    {{forbidden_terms}}) must be substituted before interpolate runs, since
@@ -136,7 +142,7 @@ export async function runAiAction(
     // 5. Log usage and capture the row id for caller-side annotations.
     const usageLogId = await logUsage({
       partnerId: opts.partnerId,
-      userId: opts.userId,
+      userId: loggedUserId,
       action: opts.action,
       provider: provider.name,
       model: result.model,
@@ -155,7 +161,7 @@ export async function runAiAction(
 
     logUsage({
       partnerId: opts.partnerId,
-      userId: opts.userId,
+      userId: loggedUserId,
       action: opts.action,
       provider: provider.name,
       model: 'unknown',

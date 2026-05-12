@@ -136,34 +136,6 @@ describe('RedisLiveState adapter (real Redis)', () => {
     });
   });
 
-  describe('seedTestHash (#110 escape hatch)', () => {
-    it('writes last_status without an existing hash; next upsertIdentity picks it up', async () => {
-      await live.seedTestHash({ partnerId: 'p1', userId: 'u1', status: 'away' });
-      // Hash does NOT exist yet (no upsertIdentity called)
-      expect(await live.readStatus('p1', 'u1')).toBeNull();
-      // last_status persists
-      const lastStatus = await client.get(`presence:last_status:p1:u1`);
-      expect(lastStatus).toBe('away');
-
-      // Now connect — upsertIdentity reads last_status
-      await live.upsertIdentity({
-        partnerId: 'p1', userId: 'u1', role: 'support', name: 'Alice', isPlatformOperator: false,
-      });
-      expect(await live.readStatus('p1', 'u1')).toBe('away');
-    });
-
-    it('updates the live hash status if user is mid-session', async () => {
-      await live.upsertIdentity({
-        partnerId: 'p1', userId: 'u1', role: 'support', name: 'Alice', isPlatformOperator: false,
-      });
-      await live.attachSocket('p1', 'u1', 's1');
-      expect(await live.readStatus('p1', 'u1')).toBe('online');
-
-      await live.seedTestHash({ partnerId: 'p1', userId: 'u1', status: 'away' });
-      expect(await live.readStatus('p1', 'u1')).toBe('away');
-    });
-  });
-
   describe('flushAll', () => {
     it('clears presence:*, partner:presence:*, presence:last_status:* prefixes', async () => {
       // Set up state across all three prefixes

@@ -101,6 +101,11 @@ export const memberships = pgTable('memberships', {
   role: roleEnum('role').notNull(),
   departments: jsonb('departments').default([]),
   source: membershipSourceEnum('source').notNull().default('sso'),
+  // GDPR Art. 21 right-to-object: when true, AI-call log rows for this
+  // membership are written with user_id = NULL ("anonymized"). The features
+  // themselves remain functional; only the personal traceability is severed.
+  // See docs/WORKS_COUNCIL_DISCLOSURE.md §5 and the toggle in UserMenuChip.
+  aiOptOut: boolean('ai_opt_out').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('idx_memberships_user_partner').on(table.userId, table.partnerId),

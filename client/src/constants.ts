@@ -1,9 +1,8 @@
 /**
  * Language-code text labels (replaces the former flag-emoji labels).
- * Kept as a constant so the DemoUserPicker + any future caller share the
- * same source. The regional-indicator flag codepoints were removed because
- * Rolldown's hash-placeholder resolver panicked when they landed at
- * mid-chunk byte offsets; text labels also match the soft-product spec.
+ * Regional-indicator flag codepoints were removed because Rolldown's
+ * hash-placeholder resolver panicked when they landed at mid-chunk byte
+ * offsets; text labels also match the soft-product spec.
  */
 export const LANG_LABEL: Record<string, string> = {
   nl: 'NL',

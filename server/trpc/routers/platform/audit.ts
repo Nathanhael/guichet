@@ -13,10 +13,9 @@ import { escapeLikePattern } from '../../../utils/security.js';
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
 
-// Audit rows emitted by `trpc.testFixtures.*` (Bundle D, RFC #82) use a
-// dedicated `audit.test_fixture.*` action namespace so they can be excluded
-// from operator-facing views without breaking the chain hash. Default-hide;
-// callers explicitly opt-in via `includeFixtures: true` for debugging.
+// Audit rows in the `audit.test_fixture.*` action namespace (legacy from
+// the removed E2E fixture API) are excluded from operator-facing views.
+// Callers explicitly opt-in via `includeFixtures: true` for debugging.
 const FIXTURE_ACTION_PATTERN = 'audit.test_fixture.%';
 
 // Union of every targetType platform operators can see — partner-scoped rows

@@ -1,18 +1,26 @@
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { router, partnerScopedProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
 import { notFound } from '../../utils/trpcErrors.js';
 import { db } from '../../db.js';
-import { aiUsageLog, aiFeedback } from '../../db/schema.js';
+import { aiUsageLog, aiFeedback, memberships } from '../../db/schema.js';
 import {
   runAiAction,
   getCachedTranslation,
   setCachedTranslation,
   getProvider,
+  getEffectiveAiConfig,
+  isUserOptedOut,
+  invalidateOptOutCache,
 } from '../../services/ai/index.js';
 import { getEffectiveAuditVerbosity } from '../../services/ai/auditVerbosity.js';
 import { shouldSkipTranslation } from '../../services/ai/translateGuards.js';
+
+// k-anonymity threshold for the admin-facing opt-out count. Below this many
+// active memberships, an aggregate count can leak identity by elimination
+// in small teams — so the AdminAi panel shows "—" with an explanatory tooltip.
+const ANONYMIZATION_COUNT_MIN_GROUP = 5;
 
 export const aiRouter = router({
   /**
@@ -162,6 +170,10 @@ export const aiRouter = router({
    * Body fields (originalText, aiOutput) are persisted ONLY when the partner's
    * effective audit verbosity is 'full'. Otherwise we keep just the rating +
    * comment + linkage — no message content lands in ai_feedback.
+   *
+   * When the caller has `memberships.aiOptOut = true`, `userId` is written as
+   * NULL so the feedback row carries no personal trace (mirrors the
+   * `ai_usage_log` anonymization in `runAiAction`).
    */
   submitFeedback: partnerScopedProcedure
     .input(z.object({
@@ -186,11 +198,13 @@ export const aiRouter = router({
       const verbosity = await getEffectiveAuditVerbosity(partnerId);
       const persistBody = verbosity === 'full';
 
+      const anonymize = await isUserOptedOut(partnerId, ctx.user.id);
+
       const inserted = await db
         .insert(aiFeedback)
         .values({
           partnerId,
-          userId: ctx.user.id,
+          userId: anonymize ? null : ctx.user.id,
           action: usageRow.action,
           usageLogId: input.usageLogId,
           rating: input.rating,
@@ -204,4 +218,64 @@ export const aiRouter = router({
       const feedbackId = inserted[0]?.id ?? '';
       return { feedbackId };
     }),
+
+  /**
+   * Effective AI config for the calling user, after applying their own
+   * `memberships.aiOptOut` to the partner-level config. The client uses this
+   * to decide whether `forced` improve mode is in effect, and to render the
+   * profile toggle's state and help-text.
+   */
+  getEffectiveConfig: partnerScopedProcedure.query(async ({ ctx }) => {
+    return await getEffectiveAiConfig(ctx.user.partnerId, ctx.user.id);
+  }),
+
+  /**
+   * Flip the caller's `memberships.aiOptOut`. Deliberately does NOT emit an
+   * `audit_log` row — recording the toggle action with `userId` would
+   * undermine the very anonymization the toggle exists to grant
+   * (would create a permanent WORM-keten entry tying the worker to the
+   * privacy choice). See plan §Decision 6.
+   */
+  setOptOut: partnerScopedProcedure
+    .input(z.object({ optOut: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      await db
+        .update(memberships)
+        .set({ aiOptOut: input.optOut })
+        .where(and(eq(memberships.userId, ctx.user.id), eq(memberships.partnerId, partnerId)));
+      await invalidateOptOutCache(partnerId, ctx.user.id);
+      return { ok: true };
+    }),
+
+  /**
+   * Admin-only k-anonymous aggregate: how many of this partner's workers
+   * have AI anonymization on. Returns `{ hidden: true }` when the partner has
+   * fewer than ANONYMIZATION_COUNT_MIN_GROUP active workers — at that scale
+   * the number leaks identity by elimination.
+   *
+   * No drill-down. Belgian CCT 81 individualization-after-anomaly clause is
+   * what makes drill-down a non-starter here.
+   */
+  getAnonymizedCount: partnerAdminProcedure.query(async ({ ctx }) => {
+    const partnerId = ctx.user.partnerId;
+    const [totalRow] = await db
+      .select({ n: count(memberships.id) })
+      .from(memberships)
+      .where(eq(memberships.partnerId, partnerId));
+    const [anonRow] = await db
+      .select({ n: count(memberships.id) })
+      .from(memberships)
+      .where(and(eq(memberships.partnerId, partnerId), eq(memberships.aiOptOut, true)));
+
+    const total = Number(totalRow?.n ?? 0);
+    const anonymized = Number(anonRow?.n ?? 0);
+    const hidden = total < ANONYMIZATION_COUNT_MIN_GROUP;
+    return {
+      total,
+      anonymized: hidden ? null : anonymized,
+      hidden,
+      threshold: ANONYMIZATION_COUNT_MIN_GROUP,
+    };
+  }),
 });

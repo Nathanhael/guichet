@@ -12,14 +12,10 @@ import LegalModal from '../components/LegalModal';
 import Button from '../components/ui/Button';
 import { getRoleDisplayName } from '../utils/roles';
 
-import DemoUserPicker from './login/DemoUserPicker';
-
 type PartnerSelection = {
   user: User;
   memberships: Membership[];
 };
-
-type AuthViewMode = 'sso-selection' | 'demo';
 
 const SHELL =
   'w-full max-w-md overflow-hidden relative z-10 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
@@ -35,7 +31,6 @@ export default function LoginView() {
 
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [viewMode, setViewMode] = useState<AuthViewMode>('sso-selection');
 
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
 
@@ -53,9 +48,6 @@ export default function LoginView() {
     }
   }, [setUser, setMemberships, setActiveMembershipId]);
 
-  // Mount-time: harvest SSO error / callback params from the URL and sync to
-  // local state. External→React state sync; must happen after mount because
-  // window.location is a browser-only API.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -173,75 +165,42 @@ export default function LoginView() {
                 </h1>
               </div>
               <p className="text-[13px] text-[var(--color-ink-muted)]">
-                {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
+                {t('sso_login_description')}
               </p>
             </div>
-            {viewMode === 'demo' && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => { setError(''); setSuccessMessage(''); setViewMode('sso-selection'); }}
-              >
-                {t('standard_login')}
-              </Button>
-            )}
           </div>
 
-          {viewMode === 'sso-selection' && (
-            <div className="px-7 pb-7 space-y-4">
-              {error && (
-                <div className="rounded-[var(--radius-btn)] bg-[var(--color-urgent-soft)] border border-[var(--color-urgent)]/30 px-3 py-2.5 flex items-start gap-2.5">
-                  <AlertCircle className="h-4 w-4 text-[var(--color-urgent)] mt-0.5 shrink-0" />
-                  <p className="text-[13px] text-[var(--color-urgent)]">{error}</p>
-                </div>
-              )}
-              {successMessage && (
-                <div className="rounded-[var(--radius-btn)] bg-[var(--color-ok-soft)] border border-[var(--color-ok)]/30 px-3 py-2.5 flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-[var(--color-ok)] mt-0.5 shrink-0" />
-                  <p className="text-[13px] text-[var(--color-ok)]">{successMessage}</p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
-                className="w-full h-[41px] flex items-center justify-center gap-3 bg-white dark:bg-[#2F2F2F] border border-[#8C8C8C] hover:shadow-[var(--shadow-soft)] active:bg-[#F3F3F3] dark:active:bg-[#1F1F1F] transition-shadow"
-                style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}
-              >
-                <svg viewBox="0 0 21 21" className="w-[21px] h-[21px]" aria-hidden="true">
-                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
-                  <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-                  <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
-                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
-                </svg>
-                <span className="text-[15px] font-semibold text-[#5E5E5E] dark:text-white">
-                  {t('sso_microsoft')}
-                </span>
-              </button>
-
-              <div className="flex items-center gap-3 pt-1">
-                <div className="flex-1 h-px bg-[var(--color-border)]" />
-                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-                  {t('or')}
-                </span>
-                <div className="flex-1 h-px bg-[var(--color-border)]" />
+          <div className="px-7 pb-7 space-y-4">
+            {error && (
+              <div className="rounded-[var(--radius-btn)] bg-[var(--color-urgent-soft)] border border-[var(--color-urgent)]/30 px-3 py-2.5 flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 text-[var(--color-urgent)] mt-0.5 shrink-0" />
+                <p className="text-[13px] text-[var(--color-urgent)]">{error}</p>
               </div>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => { setViewMode('demo'); setError(''); setSuccessMessage(''); }}
-                  className="text-[12px] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:underline underline-offset-4"
-                >
-                  {t('demo_mode')}
-                </button>
+            )}
+            {successMessage && (
+              <div className="rounded-[var(--radius-btn)] bg-[var(--color-ok-soft)] border border-[var(--color-ok)]/30 px-3 py-2.5 flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-[var(--color-ok)] mt-0.5 shrink-0" />
+                <p className="text-[13px] text-[var(--color-ok)]">{successMessage}</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {viewMode === 'demo' && (
-            <DemoUserPicker onLoginSuccess={handleLoginSuccess} />
-          )}
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; setSuccessMessage(''); }}
+              className="w-full h-[41px] flex items-center justify-center gap-3 bg-white dark:bg-[#2F2F2F] border border-[#8C8C8C] hover:shadow-[var(--shadow-soft)] active:bg-[#F3F3F3] dark:active:bg-[#1F1F1F] transition-shadow"
+              style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}
+            >
+              <svg viewBox="0 0 21 21" className="w-[21px] h-[21px]" aria-hidden="true">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+              </svg>
+              <span className="text-[15px] font-semibold text-[#5E5E5E] dark:text-white">
+                {t('sso_microsoft')}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="mt-10 flex gap-6">

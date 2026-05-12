@@ -123,17 +123,6 @@ export class MemoryLiveState implements LiveStatePort {
     return out;
   }
 
-  async seedTestHash(input: { partnerId: string; userId: string; status: AgentStatus }) {
-    // Mirror the Redis adapter's two-step seed: lastStatus (picked up on next attach)
-    // + hash status field (visible to currently-attached sockets if any).
-    const key = this.k(input.partnerId, input.userId);
-    this.lastStatus.set(key, input.status);
-    const existing = this.hashes.get(key);
-    if (existing) {
-      this.hashes.set(key, { ...existing, status: input.status, statusChangedAt: new Date().toISOString() });
-    }
-  }
-
   async flushAll() {
     const deleted = this.hashes.size + this.sockets.size + this.partnerSets.size + this.offlineAt.size;
     this.hashes.clear();
