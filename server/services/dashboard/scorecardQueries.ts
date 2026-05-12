@@ -3,9 +3,15 @@
  *
  * Aggregates per-period totals into a `PeriodRollup` consumed by the pure
  * `buildScorecard` deep service. One round trip per period: tickets (for
- * volume / SLA / response-time stats) + ratings (for CSAT). Per-ticket
- * SLA-met decisions use `partner.departments[].sla.firstResponseMinutes`
- * — out-of-band SLA configs (disabled, missing) drop to "not counted".
+ * volume / SLA / response-time stats) + ratings (for CSAT).
+ *
+ * SLA-met decisions use `elapsedBusinessMinutes` from services/sla so the
+ * scorecard agrees with the breach sweep on the same ticket — both branches
+ * pause the clock outside the partner's business hours.
+ *
+ * The p95 response-time metric stays wall-clock — it tracks "customer wait"
+ * which is the right semantic for satisfaction analytics, independent of
+ * whether staff were on the clock.
  *
  * Window semantics: `from..to` inclusive, anchored on ticket `createdAt`.
  */
@@ -14,36 +20,101 @@ import { and, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
 import { db } from '../../db.js';
 import { partners, ratings, tickets } from '../../db/schema.js';
 import { calculatePercentile } from '../stats.js';
+import { resolveSchedule, type BusinessHoursSchedule } from '../businessHours.js';
+import { elapsedBusinessMinutes, type DepartmentSlaConfig } from '../sla/index.js';
 import type { PeriodRollup } from './scorecard.js';
 
-interface DeptSlaConfig {
-  enabled: boolean;
-  firstResponseMinutes: number;
-}
-
-interface PartnerDept {
+interface PartnerDeptRaw {
   id: string;
-  sla?: { enabled?: boolean; firstResponseMinutes?: number };
+  sla?: {
+    enabled?: boolean;
+    firstResponseMinutes?: number;
+    warnAtPercent?: number;
+  };
 }
 
-async function loadDeptSlaMap(partnerId: string): Promise<Map<string, DeptSlaConfig>> {
+interface PartnerSlaContext {
+  slaMap: Map<string, DepartmentSlaConfig>;
+  schedule: BusinessHoursSchedule;
+}
+
+async function loadPartnerSlaContext(partnerId: string): Promise<PartnerSlaContext> {
   const rows = await db
-    .select({ departments: partners.departments })
+    .select({
+      departments: partners.departments,
+      businessHoursSchedule: partners.businessHoursSchedule,
+    })
     .from(partners)
     .where(eq(partners.id, partnerId))
     .limit(1);
 
-  const map = new Map<string, DeptSlaConfig>();
-  const depts = (rows[0]?.departments as PartnerDept[] | null) ?? [];
+  const slaMap = new Map<string, DepartmentSlaConfig>();
+  const depts = (rows[0]?.departments as PartnerDeptRaw[] | null) ?? [];
   for (const dept of depts) {
     if (dept?.id && dept.sla?.firstResponseMinutes) {
-      map.set(dept.id, {
+      slaMap.set(dept.id, {
         enabled: dept.sla.enabled !== false,
         firstResponseMinutes: dept.sla.firstResponseMinutes,
+        warnAtPercent: typeof dept.sla.warnAtPercent === 'number' ? dept.sla.warnAtPercent : 80,
       });
     }
   }
-  return map;
+
+  const schedule = resolveSchedule({
+    businessHoursSchedule: rows[0]?.businessHoursSchedule as BusinessHoursSchedule | null | undefined,
+  });
+
+  return { slaMap, schedule };
+}
+
+interface RollupTicketRow {
+  dept: string;
+  createdAt: string;
+  firstStaffResponseAt: string | null;
+}
+
+interface RollupClassification {
+  ticketsMetSla: number;
+  ticketsWithResponse: number;
+  responseMinutesList: number[];
+}
+
+/**
+ * Pure classifier for the SLA-met / response-time portion of the rollup.
+ * Exported for unit testing; `fetchPeriodRollup` is the SQL wrapper.
+ */
+export function classifyRollupRows(
+  rows: ReadonlyArray<RollupTicketRow>,
+  slaMap: Map<string, DepartmentSlaConfig>,
+  schedule: BusinessHoursSchedule,
+): RollupClassification {
+  let ticketsMetSla = 0;
+  let ticketsWithResponse = 0;
+  const responseMinutesList: number[] = [];
+
+  for (const row of rows) {
+    if (!row.firstStaffResponseAt) continue;
+    const responseMs =
+      new Date(row.firstStaffResponseAt).getTime() -
+      new Date(row.createdAt).getTime();
+    if (responseMs < 0) continue;
+    ticketsWithResponse += 1;
+    // Wall-clock for the customer-wait analytics (p95).
+    responseMinutesList.push(responseMs / 60000);
+
+    // SLA-met: business-hours-corrected — matches services/sla/sweep.ts.
+    const config = slaMap.get(row.dept);
+    if (config && config.enabled) {
+      const bhMinutes = elapsedBusinessMinutes(
+        new Date(row.createdAt),
+        new Date(row.firstStaffResponseAt),
+        schedule,
+      );
+      if (bhMinutes <= config.firstResponseMinutes) ticketsMetSla += 1;
+    }
+  }
+
+  return { ticketsMetSla, ticketsWithResponse, responseMinutesList };
 }
 
 export async function fetchPeriodRollup(
@@ -52,7 +123,7 @@ export async function fetchPeriodRollup(
   to: Date,
   dept?: string,
 ): Promise<PeriodRollup> {
-  const slaMap = await loadDeptSlaMap(partnerId);
+  const { slaMap, schedule } = await loadPartnerSlaContext(partnerId);
 
   const ticketRows = await db
     .select({
@@ -71,24 +142,8 @@ export async function fetchPeriodRollup(
       ),
     );
 
-  let ticketsMetSla = 0;
-  let ticketsWithResponse = 0;
-  const responseMinutesList: number[] = [];
-
-  for (const row of ticketRows) {
-    if (!row.firstStaffResponseAt) continue;
-    const responseMs =
-      new Date(row.firstStaffResponseAt).getTime() -
-      new Date(row.createdAt).getTime();
-    if (responseMs < 0) continue;
-    const minutes = responseMs / 60000;
-    ticketsWithResponse += 1;
-    responseMinutesList.push(minutes);
-    const config = slaMap.get(row.dept);
-    if (config && config.enabled && minutes <= config.firstResponseMinutes) {
-      ticketsMetSla += 1;
-    }
-  }
+  const { ticketsMetSla, ticketsWithResponse, responseMinutesList } =
+    classifyRollupRows(ticketRows, slaMap, schedule);
 
   const ratingRows = await db
     .select({
