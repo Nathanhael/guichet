@@ -32,11 +32,10 @@ export const partners = pgTable('partners', {
   // Shape: { preserve: string[], forbidden: string[] }
   aiTerms: jsonb('ai_terms').default({}).$type<{ preserve?: string[]; forbidden?: string[] }>(),
   // Per-action custom prompt instructions (decision 23).
-  // Shape: { improve?: string; translate?: string; summarize?: string }
+  // Shape: { improve?: string; translate?: string }
   aiCustomInstructions: jsonb('ai_custom_instructions').default({}).$type<{
     improve?: string;
     translate?: string;
-    summarize?: string;
   }>(),
   // SSO attribute mapping — per-partner IdP claim name overrides. Shape:
   // { locale?: string, firstName?: string, lastName?: string }. Null = use
@@ -420,7 +419,7 @@ export const kbArticles = pgTable('kb_articles', {
 export const aiPromptTemplates = pgTable('ai_prompt_templates', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   partnerId: text('partner_id').references(() => partners.id, { onDelete: 'cascade' }),
-  action: text('action').notNull(),  // classify, suggest, summarize, improve, translate, match_canned
+  action: text('action').notNull(),  // classify, suggest, improve, translate, match_canned
   template: text('template').notNull(),
   model: text('model'),              // override model per action
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
@@ -522,7 +521,7 @@ export const dailyAgentStatus = pgTable('daily_agent_status', {
 ]);
 
 /**
- * AI feedback — thumbs up/down on AI-generated outputs (improve / translate / summarize).
+ * AI feedback — thumbs up/down on AI-generated outputs (improve / translate).
  * Slice 7 (decision 29 + 30): captures user signal so admins can tune prompts and
  * partners can see whether AI suggestions actually shipped to customers.
  *
@@ -536,7 +535,7 @@ export const aiFeedback = pgTable('ai_feedback', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
-  action: text('action').notNull(),                          // 'improve' | 'translate' | 'summarize'
+  action: text('action').notNull(),                          // 'improve' | 'translate'
   usageLogId: text('usage_log_id').references(() => aiUsageLog.id, { onDelete: 'set null' }),
   rating: text('rating').notNull(),                          // 'up' | 'down'
   originalText: text('original_text'),                       // only when audit_verbosity = 'full'

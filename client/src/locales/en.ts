@@ -50,7 +50,6 @@ const en: Record<string, string> = {
     ticket_transferred_to: 'Ticket transferred to',
     yes_close: 'Yes, close',
     closing_notes_label: 'Closing Notes (Optional)',
-    summarize_resolution: 'Summarize the resolution...',
     type_message: 'Type a message…',
     send: 'Send',
     uploading: 'Uploading\u2026',
