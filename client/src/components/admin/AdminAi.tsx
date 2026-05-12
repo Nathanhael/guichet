@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, ShieldCheck } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
 import Button from '../ui/Button';
+import AiDisclosureModal from '../AiDisclosureModal';
 
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5';
 const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink)] mb-1';
@@ -53,6 +54,15 @@ export default function AdminAi() {
   const [forbidden, setForbidden] = useState('');
   const [improve, setImprove] = useState('');
   const [translate, setTranslate] = useState('');
+  const [disclosureOpen, setDisclosureOpen] = useState(false);
+
+  // K-anonymous opt-out aggregate. Server hides the count when the partner
+  // has fewer than the threshold of active workers, so admins cannot
+  // identify single dissenters by elimination (CCT 81 §6).
+  const anonymizedCountQuery = trpc.ai.getAnonymizedCount.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const anonStats = anonymizedCountQuery.data;
 
   useEffect(() => {
     const data = query.data;
@@ -176,6 +186,34 @@ export default function AdminAi() {
           ))}
         </div>
       </section>
+
+      <section className={CARD}>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
+          <h3 className={SECTION_LABEL}>{t('admin_ai_compliance_title')}</h3>
+        </div>
+        <p className={SECTION_HELP}>{t('admin_ai_compliance_help')}</p>
+        <div className="mt-4 space-y-3 text-[13px] text-[var(--color-ink-soft)]">
+          {anonStats ? (
+            <p>
+              <span className="font-medium text-[var(--color-ink)]">{t('admin_ai_compliance_anon_label')}: </span>
+              {anonStats.hidden
+                ? t('admin_ai_compliance_group_too_small')
+                : `${anonStats.anonymized} / ${anonStats.total}`}
+            </p>
+          ) : (
+            <p className="text-[var(--color-ink-muted)]">{t('loading')}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setDisclosureOpen(true)}>
+              {t('admin_ai_compliance_view_disclosure')}
+            </Button>
+          </div>
+          <p className={FIELD_HELP}>{t('admin_ai_compliance_footnote')}</p>
+        </div>
+      </section>
+
+      <AiDisclosureModal open={disclosureOpen} onClose={() => setDisclosureOpen(false)} />
 
       <div className="pt-2">
         <Button
