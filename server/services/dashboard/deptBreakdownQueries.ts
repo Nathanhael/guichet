@@ -53,6 +53,7 @@ async function loadDepartments(partnerId: string): Promise<DeptConfig[]> {
     }));
 }
 
+/** @internal — call via `dashboard.compute({ metric: 'deptBreakdown' })`. */
 export async function fetchDeptBreakdownData(
   partnerId: string,
   from: Date,

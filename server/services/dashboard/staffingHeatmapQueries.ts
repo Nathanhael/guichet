@@ -50,6 +50,7 @@ function coerceHourly(value: unknown): number[] {
   return out;
 }
 
+/** @internal — call via `dashboard.compute({ metric: 'staffingHeatmap' })`. */
 export async function fetchStaffingHeatmapData(
   partnerId: string,
   from: Date,
