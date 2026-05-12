@@ -3,8 +3,9 @@ import { db } from '../../db.js';
 import { tickets, slaBreaches, partners } from '../../db/schema.js';
 import logger from '../../utils/logger.js';
 import config from '../../config.js';
-import { resolveSchedule, type BusinessHoursSchedule } from '../businessHours.js';
-import { computeSlaState, type DepartmentSlaConfig } from './compute.js';
+import type { BusinessHoursSchedule } from '../businessHours.js';
+import { computeSlaState } from './compute.js';
+import { extractPartnerSlaContext } from './partnerContext.js';
 import type { SlaBreachBroadcaster } from './port.js';
 
 export type StaffResponseInput = {
@@ -35,8 +36,6 @@ export interface SlaSweeper {
 }
 
 const STAFF_ROLES = new Set(['support', 'admin', 'platform_operator']);
-
-type DepartmentRecord = { id: string; name: string; sla?: DepartmentSlaConfig };
 
 export function createSlaSweeper(deps: { broadcaster: SlaBreachBroadcaster }): SlaSweeper {
   const { broadcaster } = deps;
@@ -76,15 +75,12 @@ export function createSlaSweeper(deps: { broadcaster: SlaBreachBroadcaster }): S
 
     for (const partner of activePartners as Array<{
       id: string;
-      departments: DepartmentRecord[] | null;
+      departments: unknown;
       businessHoursSchedule?: BusinessHoursSchedule | null;
     }>) {
       summary.partnersChecked++;
-      const departments = (partner.departments ?? []) as DepartmentRecord[];
-      const slaDepts = departments.filter((d) => d.sla?.enabled);
-      if (slaDepts.length === 0) continue;
-
-      const schedule = resolveSchedule(partner);
+      const { slaMap, schedule } = extractPartnerSlaContext(partner);
+      if (slaMap.size === 0) continue;
 
       // Only sweep tickets that could still be resolved by a staff reply.
       // Closed/resolved tickets stay out — the partial index
@@ -103,13 +99,13 @@ export function createSlaSweeper(deps: { broadcaster: SlaBreachBroadcaster }): S
 
       for (const ticket of openTickets as Array<{ id: string; dept: string; createdAt: string }>) {
         summary.ticketsChecked++;
-        const dept = slaDepts.find((d) => d.id === ticket.dept);
-        if (!dept || !dept.sla) continue;
+        const sla = slaMap.get(ticket.dept);
+        if (!sla) continue;
 
         const state = computeSlaState({
           ticketCreatedAt: ticket.createdAt,
           firstStaffResponseAt: null,
-          sla: dept.sla,
+          sla,
           schedule,
           now,
         });
@@ -123,7 +119,7 @@ export function createSlaSweeper(deps: { broadcaster: SlaBreachBroadcaster }): S
           ticketId: ticket.id,
           partnerId: partner.id,
           dept: ticket.dept,
-          thresholdMinutes: dept.sla.firstResponseMinutes,
+          thresholdMinutes: sla.firstResponseMinutes,
           breachedAt: now.toISOString(),
         }).onConflictDoNothing({ target: slaBreaches.ticketId }).returning({ id: slaBreaches.id });
 

@@ -4,7 +4,7 @@ import { db } from '../../db.js';
 import { partners, slaBreaches } from '../../db/schema.js';
 import { and, eq, desc, lt, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { computeSlaState, type DepartmentSlaConfig } from '../../services/sla.js';
+import { computeSlaState, type DepartmentSlaConfig } from '../../services/sla/index.js';
 import { resolveSchedule, type BusinessHoursSchedule } from '../../services/businessHours.js';
 import { loadTicketForUser } from '../../services/membership.js';
 

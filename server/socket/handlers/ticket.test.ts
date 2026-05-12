@@ -84,7 +84,7 @@ vi.mock('../../services/webhookDispatch.js', () => ({
   dispatchWebhookEvent: vi.fn(async () => {}),
 }));
 
-vi.mock('../../services/sla.js', () => ({
+vi.mock('../../services/sla/index.js', () => ({
   parseSlaConfig: vi.fn(() => null),
   getEffectiveSla: vi.fn(() => ({ responseMs: 180000, resolutionMs: 3600000 })),
   calculateSlaDueDate: vi.fn(() => new Date()),
