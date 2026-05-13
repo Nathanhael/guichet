@@ -8,12 +8,7 @@ import Toast from '../Toast';
 import MemberAuditDrawer from './MemberAuditDrawer';
 import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
 import Button from '../ui/Button';
-
-// Shared Soft Product style constants — mirrors the other admin panels.
-const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
-const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
-const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
-const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+import { CARD, INPUT, SECONDARY_BTN, COL_HEAD } from './adminStyles';
 
 export default function AdminTeam() {
   const t = useT();
