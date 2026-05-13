@@ -19,9 +19,10 @@ import SplitChatLayout from '../components/support/SplitChatLayout';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
-import type { Command, ChatWindowHandle } from '../types/command';
+import type { ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
-import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useSupportTabRestore } from '../hooks/useSupportTabRestore';
+import { useSupportCommands } from '../hooks/useSupportCommands';
 import CommandPalette from '../components/support/CommandPalette';
 import KeyboardShortcutsModal from '../components/support/KeyboardShortcutsModal';
 import { useIdleStatus } from '../hooks/useIdleStatus';
@@ -69,34 +70,14 @@ export default function SupportView() {
   const t = useT();
   useIdleStatus();
 
-  // Hydrate persisted tabs from localStorage (partner-scoped)
-  const tabStorageKey = activeMembershipId ? `guichet:supportOpenTabs:${activeMembershipId}` : null;
-  const activeTabKey = activeMembershipId ? `guichet:activeTab:${activeMembershipId}` : null;
+  // tRPC ticket list (poll every 30s). Kept at this level because (a) it
+  // feeds the zustand mirror just below and (b) it's the source of truth
+  // the tab-restore hook reads to merge localStorage tabs with server-owned
+  // tickets.
+  const ticketsQuery = trpc.ticket.list.useQuery({}, { refetchInterval: 30000 });
 
-  useEffect(() => {
-    if (!tabStorageKey) return;
-    try {
-      const saved = localStorage.getItem(tabStorageKey);
-      if (saved) {
-        const ids = JSON.parse(saved) as string[];
-        for (const id of ids) addSupportOpenTicket(id);
-      }
-    } catch { /* corrupt */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabStorageKey]);
+  const { activeTab, setActiveTab } = useSupportTabRestore(ticketsQuery);
 
-  const [activeTab, setActiveTabRaw] = useState<string | null>(() => {
-    if (!activeTabKey) return null;
-    const saved = localStorage.getItem(activeTabKey);
-    return saved || null;
-  });
-  const setActiveTab = useCallback((id: string | null) => {
-    setActiveTabRaw(id);
-    if (activeTabKey) {
-      if (id) localStorage.setItem(activeTabKey, id);
-      else localStorage.removeItem(activeTabKey);
-    }
-  }, [activeTabKey]);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('queueSidebarOpen') !== 'false');
   const toggleSidebar = useCallback(() => {
@@ -117,9 +98,11 @@ export default function SupportView() {
     if (notificationsEnabled) requestNotificationPermission();
   }, [notificationsEnabled]);
 
-  // tRPC ticket list (poll every 30s)
-  const ticketsQuery = trpc.ticket.list.useQuery({}, { refetchInterval: 30000 });
-
+  // Mirror server tickets into the zustand store. The polling query lives
+  // above; this is the one-way ingestion path. The tab-restore hook reads
+  // `ticketsQuery.data` directly to dodge an ordering trap where this
+  // effect commits AFTER restore-on-mount on the same render (see hook
+  // comment for the full why).
   useEffect(() => {
     if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
       setTickets(ticketsQuery.data);
@@ -131,67 +114,6 @@ export default function SupportView() {
   useEffect(() => {
     if (labelsQuery.data) setAllLabels(labelsQuery.data);
   }, [labelsQuery.data, setAllLabels]);
-
-  // Tab restore + silent rejoin — runs once per session after tickets load.
-  // Merges two sources of truth:
-  //   1. localStorage tabs (fast same-browser restore)
-  //   2. Server-owned tickets where supportId === me and status !== closed
-  //      (handles crash / logout / new-device where localStorage is empty)
-  // Emits support:rejoin to reattach to ticket rooms silently (no "joined"
-  // whispers). Rejects are pruned from the tab list via support:rejoin:denied.
-  // Caps total tabs at MAX_OPEN_CHATS — overflow stays visible under OTHER
-  // AGENTS in the queue until the user closes a tab to pick them up.
-  //
-  // Reads `ticketsQuery.data` directly rather than the zustand `tickets`
-  // mirror: the mirror is populated by a separate effect (line 122) that
-  // commits AFTER this one fires on the same render. If we used `tickets`,
-  // the one-shot guard would lock with `tickets=[]` on the first fire and
-  // owned tickets would never rehydrate — they'd land in the "Claimed by
-  // others" rail instead of "My Chats" on every fresh page load.
-  const hasRestoredRef = useRef(false);
-  useEffect(() => {
-    if (hasRestoredRef.current) return;
-    if (!ticketsQuery.isSuccess || !user?.id) return;
-    // ticketsQuery.data is `Ticket[] | { tickets, nextCursor }` — only the
-    // array form carries the restore-source we need. Mirror the
-    // `Array.isArray` check the setTickets effect at line 122 uses, and
-    // hold the guard until we have data, so a transient paginated /
-    // pre-data render can't lock the one-shot with an empty source.
-    if (!Array.isArray(ticketsQuery.data)) return;
-    hasRestoredRef.current = true;
-    const socket = getSocket();
-    if (!socket) return;
-
-    const onDenied = ({ ticketId }: { ticketId: string }) => {
-      removeSupportOpenTicket(ticketId);
-    };
-    socket.on('support:rejoin:denied', onDenied);
-
-    const source = ticketsQuery.data;
-    const validTicketIds = new Set(source.map((tk) => tk.id));
-    const rejoined = new Set<string>();
-
-    for (const ticketId of supportOpenTickets) {
-      if (validTicketIds.has(ticketId)) {
-        socket.emit('support:rejoin', { ticketId });
-        rejoined.add(ticketId);
-      } else {
-        removeSupportOpenTicket(ticketId);
-      }
-    }
-
-    const owned = source
-      .filter((tk) => tk.supportId === user.id && tk.status !== 'closed' && !rejoined.has(tk.id))
-      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-    const available = Math.max(0, MAX_OPEN_CHATS - rejoined.size);
-
-    for (const tk of owned.slice(0, available)) {
-      addSupportOpenTicket(tk.id);
-      socket.emit('support:rejoin', { ticketId: tk.id });
-    }
-
-    return () => { socket.off('support:rejoin:denied', onDenied); };
-  }, [ticketsQuery.isSuccess, ticketsQuery.data, user?.id, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket]);
 
   // Derived state
   const openTabTickets = useMemo(
@@ -226,7 +148,6 @@ export default function SupportView() {
   // Cross-render state dependency, can't be purely derived.
   useEffect(() => {
     if (openTabTickets.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(null);
       return;
     }
@@ -303,116 +224,19 @@ export default function SupportView() {
     }
   }, [tickets, removeSupportOpenTicket, activeTab, openTabTickets, setActiveTab]);
 
-  // ── Command Palette ──
-
-  // After switching tabs via keyboard, ChatWindow remounts (keyed on
-  // activeTab). Defer the focus call so the new ComposeArea is in the DOM
-  // and chatWindowRef points at the fresh instance.
-  const focusComposeAfterTabSwitch = useCallback(() => {
-    requestAnimationFrame(() => {
-      chatWindowRef.current?.focusTextarea();
-    });
-  }, []);
-
-  const navigateTab = useCallback((direction: 1 | -1) => {
-    if (openTabTickets.length < 2 || !activeTab) return;
-    const idx = openTabTickets.findIndex((tk) => tk.id === activeTab);
-    const next = (idx + direction + openTabTickets.length) % openTabTickets.length;
-    setActiveTab(openTabTickets[next].id);
-    focusComposeAfterTabSwitch();
-  }, [openTabTickets, activeTab, setActiveTab, focusComposeAfterTabSwitch]);
-
-  const jumpToTab = useCallback((n: number) => {
-    const idx = n - 1;
-    if (idx < 0 || idx >= openTabTickets.length) return;
-    setActiveTab(openTabTickets[idx].id);
-    focusComposeAfterTabSwitch();
-  }, [openTabTickets, setActiveTab, focusComposeAfterTabSwitch]);
-
-  // Tab-bar + split-view click: activate the chat AND land the caret in its
-  // compose bar so the user can type immediately. Skip refocus if it's
-  // already the active tab (preserves any in-place input focus).
-  const selectTab = useCallback((id: string) => {
-    if (id === activeTab) return;
-    setActiveTab(id);
-    focusComposeAfterTabSwitch();
-  }, [activeTab, setActiveTab, focusComposeAfterTabSwitch]);
-
-  const commands: Command[] = useMemo(() => [
-    // Navigation
-    { id: 'focus-message', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: () => chatWindowRef.current?.focusTextarea(), keywords: ['type', 'input', 'chat'] },
-    { id: 'next-tab', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2193', execute: () => navigateTab(1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
-    { id: 'prev-tab', labelKey: 'cmd_prev_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2191', execute: () => navigateTab(-1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
-    { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: toggleSidebar, keywords: ['queue', 'sidebar', 'hide', 'show'] },
-    { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); localStorage.setItem('queueSidebarOpen', 'true'); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
-    { id: 'jump-to-tab-1', labelKey: 'cmd_jump_to_tab_1', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+1', execute: () => jumpToTab(1), enabled: openTabTickets.length >= 1, keywords: ['tab', '1'] },
-    { id: 'jump-to-tab-2', labelKey: 'cmd_jump_to_tab_2', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+2', execute: () => jumpToTab(2), enabled: openTabTickets.length >= 2, keywords: ['tab', '2'] },
-    { id: 'jump-to-tab-3', labelKey: 'cmd_jump_to_tab_3', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+3', execute: () => jumpToTab(3), enabled: openTabTickets.length >= 3, keywords: ['tab', '3'] },
-    { id: 'jump-to-tab-4', labelKey: 'cmd_jump_to_tab_4', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+4', execute: () => jumpToTab(4), enabled: openTabTickets.length >= 4, keywords: ['tab', '4'] },
-    { id: 'search-messages', labelKey: 'cmd_search_messages', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+F', execute: () => window.dispatchEvent(new CustomEvent('support:open-search')), enabled: !!activeTab, keywords: ['find', 'search', 'messages'] },
-    // Actions
-    { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+/', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
-    { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+T', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
-    { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+W', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
-    { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+Enter', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
-    { id: 'open-label-picker', labelKey: 'cmd_open_label_picker', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+L', execute: () => window.dispatchEvent(new CustomEvent('support:open-label-picker')), enabled: !!activeTab, keywords: ['label', 'tag'] },
-    { id: 'open-canned', labelKey: 'cmd_open_canned', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+J', execute: () => window.dispatchEvent(new CustomEvent('support:open-canned-picker')), enabled: !!activeTab, keywords: ['canned', 'snippet', 'template'] },
-    // Status
-    { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
-    { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
-    { id: 'open-status-picker', labelKey: 'cmd_open_status_picker', groupKey: 'cmd_group_status', shortcutHint: 'Ctrl+.', execute: () => window.dispatchEvent(new CustomEvent('support:open-status-picker')), keywords: ['status', 'picker'] },
-    // View & Toggles
-    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+F', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
-    { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
-    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+C', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'info', 'customer'] },
-  ], [activeTab, openTabTickets, navigateTab, jumpToTab, closeTab, toggleSidebar]);
-
-  useKeyboardShortcuts({
-    enabled: !paletteOpen,
+  // Command palette + global keyboard shortcuts wiring. selectTab is
+  // re-exported because the tab bar + split layout click handlers want the
+  // "switch then focus compose" behavior, which lives inside the hook.
+  const { commands, selectTab } = useSupportCommands({
+    activeTab,
+    setActiveTab,
+    openTabTickets,
+    closeTab,
+    chatWindowRef,
+    toggleSidebar,
+    setSidebarOpen,
+    paletteOpen,
     onOpenPalette: () => setPaletteOpen(true),
-    onFocusMessage: () => chatWindowRef.current?.focusTextarea(),
-    onNextTab: () => navigateTab(1),
-    onPrevTab: () => navigateTab(-1),
-    onToggleSidebar: toggleSidebar,
-    onCloseTicket: () => {
-      if (activeTab) chatWindowRef.current?.triggerCloseTicket();
-    },
-    onTransferTicket: () => {
-      if (activeTab) chatWindowRef.current?.openTransferMenu();
-    },
-    onCloseTab: () => {
-      if (activeTab) closeTab(activeTab);
-    },
-    onToggleWhisper: () => {
-      if (activeTab) chatWindowRef.current?.toggleWhisper();
-    },
-    onExitFocus: () => {
-      const s = useStore.getState();
-      if (s.viewMode === 'focus') s.setViewMode('normal');
-    },
-    onJumpToTab: (n: number) => jumpToTab(n),
-    onOpenSearch: () => {
-      if (activeTab) window.dispatchEvent(new CustomEvent('support:open-search'));
-    },
-    onOpenLabelPicker: () => {
-      if (activeTab) window.dispatchEvent(new CustomEvent('support:open-label-picker'));
-    },
-    onOpenCannedPicker: () => {
-      if (activeTab) window.dispatchEvent(new CustomEvent('support:open-canned-picker'));
-    },
-    onToggleAiCopilot: () => {
-      useStore.getState().toggleRightSidebar();
-    },
-    onOpenStatusPicker: () => {
-      window.dispatchEvent(new CustomEvent('support:open-status-picker'));
-    },
-    onToggleFocus: () => {
-      const s = useStore.getState();
-      s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus');
-    },
-    onToggleMic: () => {
-      if (activeTab) chatWindowRef.current?.toggleMic();
-    },
   });
 
   // ── Guards ──
