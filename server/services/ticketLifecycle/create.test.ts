@@ -385,7 +385,16 @@ describe('lifecycle.create', () => {
       agentLang: 'en',
     });
 
-    expect(result).toEqual({ ok: false, code: 'BUSINESS_HOURS_CLOSED' });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('BUSINESS_HOURS_CLOSED');
+    // The rejection carries the evaluated hoursStatus so the caller can
+    // format the hours:closed reply without re-reading partner config
+    // (issue #159).
+    if (result.code !== 'BUSINESS_HOURS_CLOSED') return;
+    expect(result.hoursStatus.isOpen).toBe(false);
+    expect(result.hoursStatus.timezone).toBe('UTC');
+    expect(typeof result.hoursStatus.evaluatedAt).toBe('string');
     const ticketRows = await handle.db.select().from(tickets);
     expect(ticketRows).toHaveLength(0);
   });

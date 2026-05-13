@@ -6,9 +6,11 @@
  * `socket/handlers/ticket.ts`. Also pulls in the two pieces that handler
  * was doing imperatively:
  *
- *   1. The BUSINESS_HOURS_CLOSED re-evaluation on `ticket:new` — bus now
- *      issues the second `findPartnerConfig` + `getBusinessHoursStatus`
- *      read internally and returns a typed `hours:closed` reply.
+ *   1. The BUSINESS_HOURS_CLOSED reply formatting on `ticket:new` — bus
+ *      now reads the `hoursStatus` carried on the lifecycle's rejection
+ *      and shapes the `hours:closed` payload from it. The lifecycle is
+ *      the single source of truth for the hours decision; no second DB
+ *      read (issue #159).
  *   2. The same-dept-transfer post-commit broadcast — bus appends the
  *      `ticket:transferred` emit and a `broadcastQueue` effect to the
  *      lifecycle's returnToQueue output, plus a callerLeaves entry for
@@ -31,11 +33,6 @@ import {
   replaceTicketLabels,
   findTicketPartner,
 } from '../../services/ticketQueries.js';
-import { findPartnerConfig } from '../../services/partnerQueries.js';
-import {
-  getBusinessHoursStatus,
-  type BusinessHoursSchedule,
-} from '../../services/businessHours.js';
 import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import type { CommandResult, SocketCommand } from './types.js';
 
@@ -102,15 +99,10 @@ async function dispatchNew(
         logger.warn({ partnerId: cmd.partnerId }, '[ticket:new] rejected — partner inactive');
         return errorReply('Partner is currently inactive.');
       case 'BUSINESS_HOURS_CLOSED': {
-        // Re-evaluate the status so the caller sees the same shape the
-        // legacy handler emitted (next-open timestamp etc.). Lifecycle
-        // has already declined the create; this is a transport hint only.
-        const partnerRow = await findPartnerConfig(cmd.partnerId);
-        const hoursStatus = getBusinessHoursStatus(
-          partnerRow
-            ? { businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null }
-            : undefined,
-        );
+        // Lifecycle already evaluated business hours to decide the
+        // rejection; reuse the status it returns rather than re-reading
+        // the partner row (fix for issue #159).
+        const { hoursStatus } = result;
         logger.warn(
           { partnerId: cmd.partnerId, nextOpen: hoursStatus.nextOpenAt },
           '[ticket:new] rejected — business hours closed',
