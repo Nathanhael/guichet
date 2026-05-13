@@ -9,6 +9,7 @@ import Toast from '../Toast';
 import { LABEL_COLORS as COLORS, COLOR_BG_MAP } from '../../utils/labelColors';
 import { labelCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { CARD, INPUT_FULL, ICON_BTN } from './adminStyles';
+import { usePanelMutations } from '../../hooks/usePanelMutations';
 
 export default function AdminLabels() {
   const t = useT();
@@ -16,7 +17,6 @@ export default function AdminLabels() {
   const [newColor, setNewColor] = useState<typeof COLORS[number]['key']>('indigo');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState<typeof COLORS[number]['key']>('indigo');
@@ -25,33 +25,23 @@ export default function AdminLabels() {
   const utils = trpc.useUtils();
   const { data: labels, isLoading, error: fetchError } = trpc.label.list.useQuery();
   const invalidate = () => utils.label.list.invalidate();
+  const { toast, setToast, defaults } = usePanelMutations();
 
-  const createMutation = trpc.label.create.useMutation({
-    onSuccess: () => {
-      setNewName('');
-      invalidate();
-    },
-    onError: (err) => setToast({ message: err.message, type: 'error' }),
-  });
+  const createMutation = trpc.label.create.useMutation(
+    defaults({ invalidate, onSuccess: () => setNewName('') }),
+  );
 
-  const updateMutation = trpc.label.update.useMutation({
-    onSuccess: () => {
-      setEditingId(null);
-      invalidate();
-    },
-    onError: (err) => setToast({ message: err.message, type: 'error' }),
-  });
+  const updateMutation = trpc.label.update.useMutation(
+    defaults({ invalidate, onSuccess: () => setEditingId(null) }),
+  );
 
-  const deleteMutation = trpc.label.delete.useMutation({
-    onSuccess: () => {
-      setDeletingId(null);
-      invalidate();
-    },
-    onError: (err) => {
-      setDeletingId(null);
-      setToast({ message: err.message, type: 'error' });
-    },
-  });
+  const deleteMutation = trpc.label.delete.useMutation(
+    defaults({
+      invalidate,
+      onSuccess: () => setDeletingId(null),
+      onError: () => setDeletingId(null),
+    }),
+  );
 
   const addLabel = () => {
     const errors = validateForm(labelCreateSchema, { name: newName, color: newColor });
