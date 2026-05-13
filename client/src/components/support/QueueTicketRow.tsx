@@ -5,6 +5,7 @@ import { formatChatDuration, formatQueueWait } from '../../utils/dateUtils';
 import useStore from '../../store/useStore';
 import AgentBadges from './AgentBadges';
 import LangBadge from './LangBadge';
+import { ROW_PILL_ACCENT } from './supportStyles';
 import { useLang } from '../../i18n';
 
 function prefetchComposeArea(): void {
@@ -101,7 +102,7 @@ export default function QueueTicketRow({
     >
       {/* Row 1: dept + customer presence + name + unread */}
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-accent)] text-[var(--color-accent)] shrink-0 leading-none">
+        <span className={ROW_PILL_ACCENT}>
           {ticket.dept}
         </span>
         <LangBadge lang={ticket.agentLang} viewerLang={viewerLang} />

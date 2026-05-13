@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useT } from '../i18n';
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
 import UserMenuChip from '../components/ui/UserMenuChip';
@@ -24,19 +25,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-const SIDEBAR_WIDTH_KEY = 'guichet.platformSidebarWidth';
-const SIDEBAR_MIN = 200;
-const SIDEBAR_MAX = 400;
-const SIDEBAR_DEFAULT = 240;
-
-function readInitialWidth(): number {
-  if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
-  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
-  const parsed = raw ? Number(raw) : NaN;
-  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT;
-  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
-}
-
 export default function PlatformView() {
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
@@ -45,36 +33,12 @@ export default function PlatformView() {
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
 
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const widthRef = useRef(sidebarWidth);
-
-  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    dragStateRef.current = { startX: e.clientX, startWidth: widthRef.current };
-    e.preventDefault();
-  }, []);
-
-  useEffect(() => {
-    function handleMove(e: MouseEvent) {
-      const drag = dragStateRef.current;
-      if (!drag) return;
-      const next = drag.startWidth + (e.clientX - drag.startX);
-      const clamped = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next));
-      widthRef.current = clamped;
-      setSidebarWidth(clamped);
-    }
-    function handleUp() {
-      if (!dragStateRef.current) return;
-      dragStateRef.current = null;
-      try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(widthRef.current)); } catch { /* storage disabled */ }
-    }
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleUp);
-    };
-  }, []);
+  const { width: sidebarWidth, onDragStart: handleDragStart } = useResizableSidebar({
+    storageKey: 'guichet.platformSidebarWidth',
+    defaultWidth: 240,
+    min: 200,
+    max: 400,
+  });
 
   const navItem = (id: PlatformTab, label: string, icon: React.ReactNode) => (
     <NavButton
