@@ -138,6 +138,7 @@ testing/
 !client/src/hooks/useComposeEditor.test.tsx
 !client/src/hooks/useComposeLinkPreview.test.ts
 !client/src/hooks/useKeyboardShortcuts.test.ts
+!client/src/hooks/usePanelMutations.test.ts
 !client/src/store/__tests__/sliceReset.test.ts
 !client/src/components/ui/__tests__/FormModal.test.tsx
 !client/src/components/ui/__tests__/FormModal.TypedConfirm.test.tsx

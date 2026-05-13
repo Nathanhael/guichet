@@ -14,6 +14,7 @@ import {
   FIELD_LABEL,
   COL_HEAD,
 } from './adminStyles';
+import { usePanelMutations } from '../../hooks/usePanelMutations';
 
 interface RefField {
   label: string;
@@ -60,7 +61,7 @@ export default function AdminDepartments() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<Department | null>(null);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { toast, setToast, defaults } = usePanelMutations();
   const [isSaving, setIsSaving] = useState(false);
   const [slaEditingIdx, setSlaEditingIdx] = useState<number | null>(null);
   const [slaDraft, setSlaDraft] = useState<SlaConfig>({ enabled: true, firstResponseMinutes: 30, warnAtPercent: 75 });
@@ -145,14 +146,13 @@ export default function AdminDepartments() {
     }
   });
 
-  const updateSla = trpc.partner.updateDepartmentSla.useMutation({
-    onSuccess: () => {
-      utils.partner.getManifest.invalidate();
-      setSlaEditingIdx(null);
-      setToast({ message: t('toast_sla_updated'), type: 'success' });
-    },
-    onError: (e) => setToast({ message: e.message, type: 'error' }),
-  });
+  const updateSla = trpc.partner.updateDepartmentSla.useMutation(
+    defaults({
+      invalidate: () => utils.partner.getManifest.invalidate(),
+      onSuccess: () => setSlaEditingIdx(null),
+      successMessage: t('toast_sla_updated'),
+    }),
+  );
 
   function startSlaEdit(idx: number) {
     setDeletingIdx(null);
