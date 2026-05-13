@@ -1,7 +1,8 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 import UserMenuChip from '../components/ui/UserMenuChip';
 import { NavButton, NavGroupLabel } from '../components/ui/SidebarNav';
 import AdminTickets from '../components/admin/AdminTickets';
@@ -51,19 +52,6 @@ type AdminTab =
   | 'canned_responses'
   | 'ai_customization';
 
-const SIDEBAR_WIDTH_KEY = 'guichet.adminSidebarWidth';
-const SIDEBAR_MIN = 200;
-const SIDEBAR_MAX = 400;
-const SIDEBAR_DEFAULT = 240;
-
-function readInitialWidth(): number {
-  if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
-  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
-  const parsed = raw ? Number(raw) : NaN;
-  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT;
-  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
-}
-
 export default function AdminView() {
   const { user, memberships, activeMembershipId } = useStoreShallow(s => ({
     user: s.user,
@@ -72,36 +60,12 @@ export default function AdminView() {
   }));
   const t = useT();
   const [view, setView] = useState<AdminTab>('dashboard');
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const widthRef = useRef(sidebarWidth);
-
-  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    dragStateRef.current = { startX: e.clientX, startWidth: widthRef.current };
-    e.preventDefault();
-  }, []);
-
-  useEffect(() => {
-    function handleMove(e: MouseEvent) {
-      const drag = dragStateRef.current;
-      if (!drag) return;
-      const next = drag.startWidth + (e.clientX - drag.startX);
-      const clamped = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next));
-      widthRef.current = clamped;
-      setSidebarWidth(clamped);
-    }
-    function handleUp() {
-      if (!dragStateRef.current) return;
-      dragStateRef.current = null;
-      try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(widthRef.current)); } catch { /* storage disabled */ }
-    }
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleUp);
-    };
-  }, []);
+  const { width: sidebarWidth, onDragStart: handleDragStart } = useResizableSidebar({
+    storageKey: 'guichet.adminSidebarWidth',
+    defaultWidth: 240,
+    min: 200,
+    max: 400,
+  });
 
   if (!user) return null;
 

@@ -1,6 +1,7 @@
 import type { Ticket } from '../../types';
 import { getSmartTimestamp } from '../../utils/dateUtils';
 import AgentBadges from './AgentBadges';
+import { ROW_PILL_ACCENT, ROW_PILL_MUTED } from './supportStyles';
 
 interface ArchiveTicketRowProps {
   ticket: Ticket;
@@ -27,10 +28,10 @@ export default function ArchiveTicketRow({
     <li className={rowClasses} onClick={onClick}>
       {/* Row 1: dept + closed badge + name + time */}
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-accent)] text-[var(--color-accent)] shrink-0 leading-none">
+        <span className={ROW_PILL_ACCENT}>
           {ticket.dept}
         </span>
-        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-ink-muted)] shrink-0 leading-none">
+        <span className={ROW_PILL_MUTED}>
           Closed
         </span>
         <span className="text-[13px] font-semibold text-[var(--color-ink)] truncate flex-1 min-w-0">

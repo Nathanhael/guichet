@@ -9,6 +9,7 @@ import { Ticket, Membership, OnlineSupport } from '../../types';
 import QueueTicketRow from './QueueTicketRow';
 import ArchiveTicketRow from './ArchiveTicketRow';
 import SidebarFooter from './SidebarFooter';
+import { filterChip } from './supportStyles';
 import SectionLabel from '../ui/SectionLabel';
 import Pill from '../ui/Pill';
 import { getSocket } from '../../hooks/useSocket';
@@ -218,12 +219,7 @@ export default function QueueSidebar({
     [queueFiltered],
   );
 
-  const deptChipClass = (active: boolean) =>
-    `shrink-0 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-semibold border transition-colors ${
-      active
-        ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
-        : 'border-[var(--color-border)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]'
-    }`;
+  const deptChipClass = filterChip;
 
   return (
     <>

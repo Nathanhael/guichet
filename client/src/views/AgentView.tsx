@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import AiDisclosureBanner from '../components/AiDisclosureBanner';
 import { useStoreShallow } from '../store/useStore';
@@ -16,20 +16,8 @@ import TicketForm from '../components/agent/TicketForm';
 import AgentTicketContextPanel from '../components/agent/AgentTicketContextPanel';
 import AgentChatHeader from '../components/agent/AgentChatHeader';
 import { trpc } from '../utils/trpc';
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 import type { ChatWindowHandle } from '../types/command';
-
-const SIDEBAR_WIDTH_KEY = 'guichet.agentSidebarWidth';
-const SIDEBAR_MIN = 200;
-const SIDEBAR_MAX = 320;
-const SIDEBAR_DEFAULT = 240;
-
-function readInitialWidth(): number {
-  if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
-  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
-  const parsed = raw ? Number(raw) : NaN;
-  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT;
-  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
-}
 
 export default function AgentView() {
   const {
@@ -56,36 +44,12 @@ export default function AgentView() {
   const [showFeedback, setShowFeedback] = useState(false);
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const widthRef = useRef(sidebarWidth);
-
-  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    dragStateRef.current = { startX: e.clientX, startWidth: widthRef.current };
-    e.preventDefault();
-  }, []);
-
-  useEffect(() => {
-    function handleMove(e: MouseEvent) {
-      const drag = dragStateRef.current;
-      if (!drag) return;
-      const next = drag.startWidth + (e.clientX - drag.startX);
-      const clamped = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next));
-      widthRef.current = clamped;
-      setSidebarWidth(clamped);
-    }
-    function handleUp() {
-      if (!dragStateRef.current) return;
-      dragStateRef.current = null;
-      try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(widthRef.current)); } catch { /* storage disabled */ }
-    }
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleUp);
-    };
-  }, []);
+  const { width: sidebarWidth, onDragStart: handleDragStart } = useResizableSidebar({
+    storageKey: 'guichet.agentSidebarWidth',
+    defaultWidth: 240,
+    min: 200,
+    max: 320,
+  });
 
   // Keep business hours store fresh even when TicketForm is unmounted (agent in active chat)
   useBusinessHours();
