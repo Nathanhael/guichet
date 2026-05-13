@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import Toast from '../Toast';
 import Button from '../ui/Button';
 import AiDisclosureModal from '../AiDisclosureModal';
+import { usePanelMutations } from '../../hooks/usePanelMutations';
 
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5';
 const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink)] mb-1';
@@ -26,7 +27,7 @@ export default function AdminAi() {
   const utils = trpc.useUtils();
   const query = trpc.partner.getAiCustomization.useQuery();
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, { staleTime: 60_000 });
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { toast, setToast, defaults } = usePanelMutations();
 
   // AI is "effectively off" when the global kill-switch is flipped, OR when
   // every feature in the partner's aiFeatures resolves to off (the server
@@ -42,13 +43,12 @@ export default function AdminAi() {
         && !aiCfg.voiceTranscription
         && !aiCfg.cannedTranslation);
 
-  const updateMutation = trpc.partner.updateAiCustomization.useMutation({
-    onSuccess: () => {
-      utils.partner.getAiCustomization.invalidate();
-      setToast({ message: t('admin_ai_saved_toast'), type: 'success' });
-    },
-    onError: (err) => setToast({ message: err.message, type: 'error' }),
-  });
+  const updateMutation = trpc.partner.updateAiCustomization.useMutation(
+    defaults({
+      invalidate: () => utils.partner.getAiCustomization.invalidate(),
+      successMessage: t('admin_ai_saved_toast'),
+    }),
+  );
 
   const [preserve, setPreserve] = useState('');
   const [forbidden, setForbidden] = useState('');
