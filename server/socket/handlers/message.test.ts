@@ -186,10 +186,17 @@ describe('message:send', () => {
       ...socketData,
     });
 
+    // A minimal CommandBus stub. The real bus is exercised in
+    // commandBus/messageBus.test.ts; here we only want to confirm the
+    // handler-level guards (auth, parsing, rate limit) run BEFORE the bus
+    // ever sees the command, and that bus output is forwarded back to the
+    // socket via applyCommandResult.
+    const busDispatch = vi.fn(async () => ({ effects: [] }));
     const ctx = {
       io,
       socketTickets: new Map<string, Set<string>>(),
       viewerKeyPrefix: 'ticket:viewers:',
+      bus: { dispatch: busDispatch },
     };
 
     register(socket, ctx);
@@ -197,39 +204,43 @@ describe('message:send', () => {
     const messageSendCall = socket.on.mock.calls.find(
       (c: [string, (...args: unknown[]) => void]) => c[0] === 'message:send',
     );
-    return { socket, io, messageSendHandler: messageSendCall?.[1] };
+    return { socket, io, busDispatch, messageSendHandler: messageSendCall?.[1] };
   }
 
-  it('rejects unidentified socket (no userId/partnerId set)', async () => {
-    const { socket, messageSendHandler } = await setupMessageSend();
+  it('rejects unidentified socket (no userId/partnerId set) — bus is never reached', async () => {
+    const { socket, busDispatch, messageSendHandler } = await setupMessageSend();
 
     await messageSendHandler({ ticketId: 'ticket-1', text: 'hello' });
 
     expect(socket.emit).toHaveBeenCalledWith('error', {
       message: 'Not authenticated — call socket:identify first',
     });
+    expect(busDispatch).not.toHaveBeenCalled();
   });
 
-  it('rejects message to ticket belonging to a different partner', async () => {
-    const { socket, messageSendHandler } = await setupMessageSend({
+  it('hands the parsed command to the bus when the socket is identified', async () => {
+    const { busDispatch, messageSendHandler } = await setupMessageSend({
       userId: 'u1',
       partnerId: 'partner-A',
       role: 'agent',
       name: 'Test User',
     });
 
-    findTicketForMessageMock.mockResolvedValueOnce({ status: 'open', partnerId: 'partner-B' });
+    await messageSendHandler({ ticketId: 'ticket-1', text: 'hello' });
 
-    await messageSendHandler({ ticketId: 'ticket-99', text: 'cross-tenant message' });
-
-    expect(socket.emit).toHaveBeenCalledWith('error', {
-      message: 'Not authorized',
-    });
+    expect(busDispatch).toHaveBeenCalledTimes(1);
+    const [cmd, socketId] = busDispatch.mock.calls[0] as [{ type: string; ticketId: string; text: string }, string];
+    expect(cmd.type).toBe('message:send');
+    expect(cmd.ticketId).toBe('ticket-1');
+    expect(cmd.text).toBe('hello');
+    expect(socketId).toBe('socket-1');
   });
 
-  // The "allows message" happy-path test was removed in PR 3 — it asserted
-  // against the legacy `insertMessage` mock, which is now bypassed because
-  // the handler delegates to `ctx.messageLifecycle.send`. The same
-  // observable behavior is covered with stronger assertions in
-  // `services/messageLifecycle/send.test.ts` (PGLite boundary tests).
+  // Cross-tenant rejection moved to commandBus/messageBus.test.ts — the
+  // partner-scope check now lives inside the bus, not the handler.
 });
+
+// Mark findTicketForMessageMock as referenced — vi.mock above wires it but
+// after the refactor the bus owns the scope check, so the mock object
+// remains valid scaffolding for future bus tests in this file.
+void findTicketForMessageMock;
