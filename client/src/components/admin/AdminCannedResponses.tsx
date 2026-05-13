@@ -5,9 +5,11 @@ import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText, AlertTria
 import ErrorBox from './ErrorBox';
 import FieldError from '../FieldError';
 import BionicText from '../BionicText';
+import Toast from '../Toast';
 import { cannedResponseCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useStoreShallow } from '../../store/useStore';
 import { usePartner } from '../../hooks/usePartner';
+import { usePanelMutations } from '../../hooks/usePanelMutations';
 
 type SupportedLang = 'nl' | 'fr' | 'en';
 const ALL_LANGS: SupportedLang[] = ['nl', 'fr', 'en'];
@@ -87,40 +89,40 @@ export default function AdminCannedResponses() {
   const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery();
 
   const invalidate = () => utils.cannedResponse.list.invalidate();
+  const { toast, setToast, defaults } = usePanelMutations();
 
-  const createMutation = trpc.cannedResponse.create.useMutation({
-    onSuccess: () => {
-      setNewTitle('');
-      setNewBody('');
-      setNewDept('');
-      setNewShortcut('');
-      setNewSourceLang(initialSourceLang);
-      invalidate();
-    },
-  });
+  const createMutation = trpc.cannedResponse.create.useMutation(
+    defaults({
+      invalidate,
+      onSuccess: () => {
+        setNewTitle('');
+        setNewBody('');
+        setNewDept('');
+        setNewShortcut('');
+        setNewSourceLang(initialSourceLang);
+      },
+    }),
+  );
 
-  const updateMutation = trpc.cannedResponse.update.useMutation({
-    onSuccess: () => {
-      setEditingId(null);
-      invalidate();
-    },
-  });
+  const updateMutation = trpc.cannedResponse.update.useMutation(
+    defaults({ invalidate, onSuccess: () => setEditingId(null) }),
+  );
 
-  const deleteMutation = trpc.cannedResponse.delete.useMutation({
-    onSuccess: () => invalidate(),
-  });
+  const deleteMutation = trpc.cannedResponse.delete.useMutation(
+    defaults({ invalidate }),
+  );
 
-  const regenerateMutation = trpc.cannedResponse.regenerate.useMutation({
-    onSuccess: () => {
-      setRegeneratingPair(null);
-      invalidate();
-    },
-    onError: () => setRegeneratingPair(null),
-  });
+  const regenerateMutation = trpc.cannedResponse.regenerate.useMutation(
+    defaults({
+      invalidate,
+      onSuccess: () => setRegeneratingPair(null),
+      onError: () => setRegeneratingPair(null),
+    }),
+  );
 
-  const backfillMutation = trpc.cannedResponse.backfillUntranslated.useMutation({
-    onSuccess: () => invalidate(),
-  });
+  const backfillMutation = trpc.cannedResponse.backfillUntranslated.useMutation(
+    defaults({ invalidate }),
+  );
 
   const addResponse = () => {
     const errors = validateForm(cannedResponseCreateSchema, {
@@ -623,6 +625,7 @@ export default function AdminCannedResponses() {
           {t(responses.length === 1 ? 'canned_response_count_singular' : 'canned_response_count_plural').replace('{count}', String(responses.length))}
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
