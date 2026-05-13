@@ -4,7 +4,7 @@
 // (which Message renders); plain-text messages pay zero parse cost for
 // the three fragments.
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Ghost, Sparkles } from 'lucide-react';
 import { useStoreShallow } from '../../store/useStore';
 import Avatar from '../ui/Avatar';
@@ -35,7 +35,7 @@ export interface MessageProps {
   aiConfig?: AiConfig;
 }
 
-export default function Message({
+function MessageInner({
   message,
   ticketId,
   isGroupStart = true,
@@ -467,3 +467,12 @@ export default function Message({
     </div>
   );
 }
+
+// React.memo with default shallow equality. Skips re-renders when parent
+// re-renders with the same prop refs — e.g. typing indicator ticks on
+// MessageList don't re-render every bubble in a long thread. The `message`
+// ref is stable per-id from the upstream ticketMessages array; other props
+// are primitives or stable callbacks from MessageList. If a future caller
+// passes a callback that changes identity each render, wrap it in
+// `useCallback` upstream or this memo is silently inert.
+export default memo(MessageInner);
