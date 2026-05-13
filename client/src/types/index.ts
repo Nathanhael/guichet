@@ -269,40 +269,6 @@ export interface HourPoint {
   count: number;
 }
 
-export interface SupportPerformanceTrend {
-  name: string;
-  trend?: { date: string; count: number }[];
-}
-
-export interface DeptRating {
-  avg: number;
-  count: number;
-}
-
-export interface AdminStats {
-  total: number;
-  avgResponseMinutes: number;
-  avgDurationMinutes: number;
-  p95ResponseMinutes?: number;
-  reopenRate?: number;
-  avgRating: number;
-  abandonedCount: number;
-  oldestWaitMinutes: number;
-  waitingOver3: number;
-  deptCounts: Record<string, number>;
-  trendGranularity: 'daily' | 'weekly' | 'monthly';
-  dailyTrend: { date: string; total: number; deptCounts: Record<string, number> }[];
-  ratingsByDept?: Record<string, DeptRating>;
-  supportStats: { name: string; total: number; today: number }[];
-  agentStats: { name: string; total: number; today: number }[];
-  hourlyDistribution: { hour: number; count: number }[];
-  hourlyStaffing?: { hour: number; tickets: number; support: number }[];
-  daySummary?: Record<string, string[]>;
-  previousPeriod?: Partial<AdminStats>;
-}
-
-export type Statistics = AdminStats;
-
 export interface FeedbackItem {
   id: string;
   userName: string;
