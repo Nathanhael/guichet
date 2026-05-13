@@ -7,10 +7,7 @@ import { usePartner } from '../../../hooks/usePartner';
 import { useT } from '../../../i18n';
 import { aggregateSupportRatings, buildUserMaps, RatingInput, UserInput, DeptBreakdown as DeptBreakdownData } from './supportRatings';
 
-import { CARD } from '../adminStyles';
-
-// Panel-local: COL_HEAD uses px-6 (table padding differs from canonical px-4).
-const COL_HEAD = 'px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+import { CARD, COL_HEAD_WIDE as COL_HEAD } from '../adminStyles';
 
 export default function RatingsTab() {
   const t = useT();

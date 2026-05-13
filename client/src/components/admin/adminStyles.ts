@@ -31,5 +31,10 @@ export const FIELD_LABEL =
 export const COL_HEAD =
   'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
+// Wider variant for denser dashboard tables (e.g. RatingsTab support-by-support
+// breakdown) where rows carry more whitespace between columns.
+export const COL_HEAD_WIDE =
+  'px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+
 export const SECTION_LABEL =
   'text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';

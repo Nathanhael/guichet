@@ -7,6 +7,21 @@ import Button from '../ui/Button';
 import AiDisclosureModal from '../AiDisclosureModal';
 import { usePanelMutations } from '../../hooks/usePanelMutations';
 
+// Panel-local style consts — intentionally diverge from the canonical
+// adminStyles tokens. AdminAi is form-heavy (every CARD wraps a labeled form
+// section, every INPUT is a glossary or instruction field), so it uses a
+// denser, form-flavored variant of the admin idiom:
+//   - CARD bakes in p-5 (every card here is a form section, never bare)
+//   - INPUT uses focus:ring (more visible focus affordance — deliberate for a
+//     safety-critical AI config surface) instead of focus:border
+//   - FIELD_LABEL is larger (12px) + uses full ink color, sits closer to the
+//     input (mb-1 not mb-1.5) — reads as a form label, not a column header
+//   - SECTION_LABEL uses font-semibold + wider tracking — form section
+//     dividers, not the muted table column header style
+//   - SECTION_HELP / FIELD_HELP / COUNTER / INPUT_DISABLED are form-helper
+//     surfaces that don't appear in non-form admin panels
+// If a second form-heavy admin panel emerges, promote these to a FORM_* suite
+// in adminStyles. Until then locality is the lower-overhead choice.
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5';
 const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink)] mb-1';
 const INPUT = 'w-full px-3 py-2 text-[13px] border border-[var(--color-border)] rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40';

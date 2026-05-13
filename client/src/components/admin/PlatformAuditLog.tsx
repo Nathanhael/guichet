@@ -9,12 +9,14 @@ import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
 import { formatAuditDetails } from '../../utils/auditFormat';
 
-import { CARD, INPUT_FULL as INPUT, FIELD_LABEL, COL_HEAD } from './adminStyles';
-
-// Panel-local: PRIMARY_BTN uses opacity-50; SECONDARY_BTN uses px-4 not px-3.
-// Diverges from canonical — reconcile in a design follow-up.
-const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
-const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
+import {
+  CARD,
+  INPUT_FULL as INPUT,
+  FIELD_LABEL,
+  COL_HEAD,
+  PRIMARY_BTN,
+  SECONDARY_BTN,
+} from './adminStyles';
 
 export default function PlatformAuditLog() {
   const t = useT();
