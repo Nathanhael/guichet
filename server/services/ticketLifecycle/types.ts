@@ -7,6 +7,7 @@
  */
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import type * as schema from '../../db/schema.js';
+import type { BusinessHoursStatus } from '../businessHours.js';
 
 /**
  * Substrate-agnostic Drizzle handle. Production wires the `node-postgres`
@@ -62,10 +63,16 @@ export type LifecycleError =
  * call sites can `switch` exhaustively. Infra failures (DB down, audit
  * insert errored) still throw — the transaction aborts and the caller sees
  * a thrown error, which is the correct signal at that layer.
+ *
+ * The `BUSINESS_HOURS_CLOSED` rejection carries the evaluated
+ * `BusinessHoursStatus` (the same value the lifecycle used to decide the
+ * gate) so the caller can format the `hours:closed` reply payload
+ * without re-reading partner config — see issue #159.
  */
 export type Result<Ok> =
   | { ok: true; data: Ok; effects: Effect[] }
-  | { ok: false; code: LifecycleError };
+  | { ok: false; code: 'BUSINESS_HOURS_CLOSED'; hoursStatus: BusinessHoursStatus }
+  | { ok: false; code: Exclude<LifecycleError, 'BUSINESS_HOURS_CLOSED'> };
 
 /**
  * Post-commit side effects. Returned as a transport-neutral array; the

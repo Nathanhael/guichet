@@ -103,7 +103,9 @@ export async function runCreate(
     businessHoursSchedule: partner.businessHoursSchedule as BusinessHoursSchedule | null,
   });
   if (!hoursStatus.isOpen) {
-    return { ok: false, code: 'BUSINESS_HOURS_CLOSED' };
+    // Surface the evaluated status so the caller can format the
+    // hours:closed reply without re-reading the same partner row.
+    return { ok: false, code: 'BUSINESS_HOURS_CLOSED', hoursStatus };
   }
 
   const existing = await readActiveTicketForAgent(deps.db, {

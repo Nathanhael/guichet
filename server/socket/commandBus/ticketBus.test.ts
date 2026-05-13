@@ -19,8 +19,11 @@ const h = vi.hoisted(() => ({
   findTicketPartnerMock: vi.fn(),
   findPartnerLabelsMock: vi.fn(),
   replaceTicketLabelsMock: vi.fn(),
+  // Spy mocks for the modules the bus must NOT call anymore on the
+  // BUSINESS_HOURS_CLOSED path (issue #159). Kept here so the test can
+  // assert the bus does not import/use them.
   findPartnerConfigMock: vi.fn(),
-  getBusinessHoursStatusMock: vi.fn(() => ({ isOpen: false, message: 'Closed' })),
+  getBusinessHoursStatusMock: vi.fn(),
 }));
 
 vi.mock('../../services/ticketQueries.js', () => ({
@@ -99,27 +102,40 @@ describe('ticketBus — ticket:new', () => {
     expect(result.effects).toHaveLength(1);
   });
 
-  it('emits hours:closed with re-evaluated status when lifecycle rejects BUSINESS_HOURS_CLOSED', async () => {
+  it('emits hours:closed from lifecycle-provided hoursStatus when create rejects BUSINESS_HOURS_CLOSED (no second DB read — issue #159)', async () => {
+    const hoursStatus = {
+      isOpen: false as const,
+      timezone: 'UTC',
+      source: 'weekly' as const,
+      nextOpenAt: '2026-05-14T08:00:00.000Z',
+      evaluatedAt: '2026-05-13T18:00:00.000Z',
+      message: 'Outside hours',
+    };
     const lifecycle = makeLifecycle({
-      create: vi.fn(async () => ({ ok: false as const, code: 'BUSINESS_HOURS_CLOSED' as const })),
+      create: vi.fn(async () => ({
+        ok: false as const,
+        code: 'BUSINESS_HOURS_CLOSED' as const,
+        hoursStatus,
+      })),
     } as Partial<TicketLifecycle>);
-    h.findPartnerConfigMock.mockResolvedValueOnce({ businessHoursSchedule: null });
-    h.getBusinessHoursStatusMock.mockReturnValueOnce({ isOpen: false, message: 'Outside hours' });
 
     const cmd: SocketCommand = {
       type: 'ticket:new', partnerId: 'p_a', actor: makeActor({ role: 'agent' }), dept: 'general', agentLang: 'en',
     };
     const result = await dispatchTicketCommand({ ticketLifecycle: lifecycle }, cmd);
 
-    expect(result.reply).toMatchObject({
+    expect(result.reply).toEqual({
       event: 'hours:closed',
       payload: {
         code: 'BUSINESS_HOURS_CLOSED',
         message: 'Outside hours',
-        status: expect.objectContaining({ isOpen: false }),
+        status: hoursStatus,
       },
     });
-    expect(h.findPartnerConfigMock).toHaveBeenCalledWith('p_a');
+    // The bus must NOT re-read partner config or re-evaluate the hours
+    // schedule — the lifecycle is the single source of truth.
+    expect(h.findPartnerConfigMock).not.toHaveBeenCalled();
+    expect(h.getBusinessHoursStatusMock).not.toHaveBeenCalled();
   });
 
   it('rejects with "Missing required fields" when dept or agentLang are empty', async () => {
