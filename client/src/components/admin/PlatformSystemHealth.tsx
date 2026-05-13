@@ -23,7 +23,12 @@ type ChainVerifyRecord = {
   error?: string;
 };
 
-const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+import { CARD } from './adminStyles';
+
+// Panel-local: SECTION_H is unique; FIELD_LABEL drops mb and uses
+// font-semibold (vs canonical font-medium); PRIMARY/SECONDARY_BTN use
+// opacity-50 / px-4 / no disabled — diverges from canonical, reconcile
+// in a design follow-up.
 const SECTION_H = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-3';
 const FIELD_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';

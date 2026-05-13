@@ -8,6 +8,7 @@ import FieldError from '../FieldError';
 import Toast from '../Toast';
 import { LABEL_COLORS as COLORS, COLOR_BG_MAP } from '../../utils/labelColors';
 import { labelCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
+import { CARD, INPUT_FULL, ICON_BTN } from './adminStyles';
 
 export default function AdminLabels() {
   const t = useT();
@@ -87,10 +88,6 @@ export default function AdminLabels() {
 
   const error = fetchError?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message;
 
-  const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
-  const INPUT = 'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
-  const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -121,7 +118,7 @@ export default function AdminLabels() {
                 onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
                 onKeyDown={(e) => e.key === 'Enter' && addLabel()}
                 placeholder={t('label_name_placeholder')}
-                className={`${INPUT} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
+                className={`${INPUT_FULL} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
                 maxLength={50}
               />
               <FieldError error={fieldErrors.name} />
@@ -198,7 +195,7 @@ export default function AdminLabels() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
-                      className={INPUT}
+                      className={INPUT_FULL}
                       maxLength={50}
                       autoFocus
                     />

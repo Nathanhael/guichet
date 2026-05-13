@@ -17,16 +17,16 @@ import {
 import { useBusinessHours } from '../../hooks/useBusinessHours';
 import { useT } from '../../i18n';
 import TimezonePicker from '../TimezonePicker';
-
-// Shared Soft Product style constants
-const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
-const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
-const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 transition-all';
-const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
-const GHOST_BTN = 'h-8 px-2.5 inline-flex items-center gap-1 rounded-[var(--radius-btn)] text-[12px] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors';
-const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
-const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
-const SECTION_LABEL = 'text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+import {
+  CARD,
+  INPUT,
+  PRIMARY_BTN,
+  SECONDARY_BTN,
+  GHOST_BTN,
+  FIELD_LABEL,
+  COL_HEAD,
+  SECTION_LABEL,
+} from './adminStyles';
 
 function cloneSchedule(schedule: BusinessHoursSchedule) {
   return JSON.parse(JSON.stringify(schedule)) as BusinessHoursSchedule;
