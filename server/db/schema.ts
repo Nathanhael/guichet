@@ -394,26 +394,6 @@ export const archivedTickets = pgTable('archived_tickets', {
   index('idx_archived_tickets_references').using('gin', table.references),
 ]);
 
-// ─── Knowledge Base ─────────────────────────────────────────────────────────
-
-export const kbArticles = pgTable('kb_articles', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  body: text('body').notNull(),
-  dept: text('dept'),                              // null = all departments
-  tags: jsonb('tags').default([]),                  // string[] for filtering
-  slug: text('slug'),                              // URL-friendly key
-  published: boolean('published').notNull().default(true),
-  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => [
-  index('idx_kb_partner').on(table.partnerId),
-  uniqueIndex('idx_kb_partner_slug').on(table.partnerId, table.slug),
-  index('idx_kb_partner_published').on(table.partnerId, table.published),
-]);
-
 // ─── AI Service Tables ──────────────────────────────────────────────────────
 
 export const aiPromptTemplates = pgTable('ai_prompt_templates', {

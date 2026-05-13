@@ -8,13 +8,13 @@ This document provides an overview of the core architecture for the simplified, 
 
 The database has been overhauled for type safety and performance:
 - **Native JSONB**: All structured data (`departments`, `participants`, `reactions`, `memberships.departments`) uses native JSONB for efficient nested querying.
-- **PG Enums**: Enforced data integrity for `user_role`, `ticket_status`, and `severity`.
+- **PG Enums**: Enforced data integrity for `user_role`, `ticket_status`, and `membership_source`.
 - **Unique Constraints**: Enforced unique `(user_id, partner_id)` combinations in the `memberships` table to prevent data duplication.
 - **Audit Diffs**: The `audit_log` table captures granular state changes (`from -> to`) for configuration and identity updates.
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 - **System Configuration**: Added `system_settings` table to store global infrastructure parameters (like mail provider credentials) manageable via the Platform UI.
 - **AI & Analytics Tables**: `ai_prompt_templates` (per-partner prompt customization), `ai_usage_log` (provider usage tracking with token counts and latency), `ratings` (ticket CSAT), `app_feedback` (in-app user feedback).
-- **Integration Tables**: `kb_articles` (per-partner knowledge base), `partner_group_mappings` (SSO group→role/department mapping).
+- **Integration Tables**: `partner_group_mappings` (SSO group→role/department mapping).
 - **User Personalization**: `saved_views` (per-user saved ticket filter configurations per partner).
 
 ---
@@ -125,9 +125,8 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 
 ---
 
-## 9. Knowledge Base & SLA
+## 9. SLA & Ratings
 
-- **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
 - **SLA Monitoring**: Per-department first-response SLA (`sla_breaches` table + `tickets.first_staff_response_at`). Config in `AdminDepartments` (enable flag + threshold minutes + warn%). Breach worker (`services/sla.ts`) sweeps every `SLA_SWEEP_INTERVAL_MS` (default 60000, 0 disables). Business-hours-aware elapsed counter skips off-hours. `SlaIndicator` pill renders in `ChatHeader`; QueueSidebar adds a red left-border on breached rows. Burst alert (≥5 breaches in the last hour) is surfaced on the Health page as `slaBreachBurst`.
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
 
@@ -137,7 +136,7 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 
 - **Enterprise UI Patterns**: Long lists, such as the `PlatformAuditLog`, implement robust UX paradigms including sticky pagination bars and debounced searching (e.g., waiting 500ms before triggering a backend query) to reduce server load and improve client-side performance.
 - **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
-- **Component Organization**: `components/ui/` (11 design-system primitives — Avatar, Button, Card, FormModal, Modal, Pill, SectionLabel, SidebarNav, Toast, ToastProvider, UserMenuChip), `components/admin/` (21 panels — satisfaction, team, departments, tickets, business hours, labels, canned responses, KB, feedback, archive, AI, audit, platform ops), `components/admin/dashboard/` (zone redesign — DashboardView, FilterBar, Scorecard, StaffingHeatmapZone, TrendsZone, DeptBreakdownTable, StaffBreakdownTable, OnboardingChecklist), `components/agent/` (3 — AgentChatHeader, AgentTicketContextPanel, TicketForm), `components/support/` (14 — QueueSidebar, ChatTabBar, TicketSidebar, CommandPalette, KeyboardShortcutsModal, SidebarFooter, SplitChatLayout, etc.), `components/chat/` (public surface: ChatHeader, ComposeArea, Message, MessageList, SearchBar, FormatToolbar, ImageLightbox, ImproveDiffModal, EmojiSuggestion; private internals reachable only through `<Message>`: AttachmentGrid, DeliveryStatus, MessageContent, LinkPreviewCard, QuoteBlock). Shared components at root level (ChatWindow, Toast, ConfirmDialog, BionicText, SlaIndicator, etc.).
+- **Component Organization**: `components/ui/` (11 design-system primitives — Avatar, Button, Card, FormModal, Modal, Pill, SectionLabel, SidebarNav, Toast, ToastProvider, UserMenuChip), `components/admin/` (20 panels — satisfaction, team, departments, tickets, business hours, labels, canned responses, feedback, archive, AI, audit, platform ops), `components/admin/dashboard/` (zone redesign — DashboardView, FilterBar, Scorecard, StaffingHeatmapZone, TrendsZone, DeptBreakdownTable, StaffBreakdownTable, OnboardingChecklist), `components/agent/` (3 — AgentChatHeader, AgentTicketContextPanel, TicketForm), `components/support/` (14 — QueueSidebar, ChatTabBar, TicketSidebar, CommandPalette, KeyboardShortcutsModal, SidebarFooter, SplitChatLayout, etc.), `components/chat/` (public surface: ChatHeader, ComposeArea, Message, MessageList, SearchBar, FormatToolbar, ImageLightbox, ImproveDiffModal, EmojiSuggestion; private internals reachable only through `<Message>`: AttachmentGrid, DeliveryStatus, MessageContent, LinkPreviewCard, QuoteBlock). Shared components at root level (ChatWindow, Toast, ConfirmDialog, BionicText, SlaIndicator, etc.).
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
 - **Data Visualization**: Recharts for the dashboard zones (`TrendsZone`, `Scorecard`).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.

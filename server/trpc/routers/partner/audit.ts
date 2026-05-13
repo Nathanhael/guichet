@@ -9,7 +9,6 @@ import { trpcActor } from '../../../services/auth/index.js';
 const PARTNER_ACTIONS = [
   'partner.config_updated',
   'label.created',
-  'kb.created',
   'sso.membership_auto_created',
   'sso.role_synced',
   'sso.membership_revoked',

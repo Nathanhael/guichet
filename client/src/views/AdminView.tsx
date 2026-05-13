@@ -9,8 +9,6 @@ import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
 import AdminCannedResponses from '../components/admin/AdminCannedResponses';
-// DISABLED_FEATURE: Knowledge Base — hidden until production-ready
-// import AdminKnowledgeBase from '../components/admin/AdminKnowledgeBase';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAi from '../components/admin/AdminAi';
@@ -52,7 +50,6 @@ type AdminTab =
   | 'labels'
   | 'canned_responses'
   | 'ai_customization';
-// DISABLED_FEATURE: removed 'knowledge_base'
 
 const SIDEBAR_WIDTH_KEY = 'guichet.adminSidebarWidth';
 const SIDEBAR_MIN = 200;

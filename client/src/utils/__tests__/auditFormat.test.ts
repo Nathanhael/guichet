@@ -39,7 +39,6 @@ const TEMPLATES: Record<string, string> = {
   audit_action_sso_membership_revoked: 'Revoked: {reason}',
   audit_action_system_archive_run: 'Archived {count} records',
   audit_action_system_gdpr_purge: 'Purged {tickets}t {messages}m',
-  audit_action_kb_created: 'KB: {title}',
   audit_action_label_created: 'Label: {name}',
 };
 
@@ -159,13 +158,10 @@ describe('formatAuditDetails — single-placeholder interpolation', () => {
     ).toBe('Revoked: ');
   });
 
-  it('system.archive_run, kb.created, label.created', () => {
+  it('system.archive_run, label.created', () => {
     expect(
       formatAuditDetails({ action: 'system.archive_run', metadata: { count: 42 }, targetId: null }, t),
     ).toBe('Archived 42 records');
-    expect(
-      formatAuditDetails({ action: 'kb.created', metadata: { title: 'How to' }, targetId: null }, t),
-    ).toBe('KB: How to');
     expect(
       formatAuditDetails({ action: 'label.created', metadata: { name: 'urgent' }, targetId: null }, t),
     ).toBe('Label: urgent');

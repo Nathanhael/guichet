@@ -105,10 +105,6 @@ vi.mock('../../config.js', () => ({
   default: { JWT_SECRET: 'test-secret-key-that-is-long-enough-for-hs256' },
 }));
 
-vi.mock('../../constants.js', () => ({
-  DISABLED_FEATURES: [],
-}));
-
 // ── Import router AFTER mocks ────────────────────────────────────────────
 
 import { partnerAuditRouter } from './partner/audit.js';
