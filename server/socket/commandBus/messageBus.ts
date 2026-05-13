@@ -57,7 +57,7 @@ function collectViewerLangs(
 
 export async function dispatchMessageCommand(
   deps: { messageLifecycle: MessageLifecycle; io: Server },
-  cmd: SocketCommand,
+  cmd: Extract<SocketCommand, { type: `message:${string}` }>,
   callerSocketId: string,
 ): Promise<CommandResult> {
   switch (cmd.type) {

@@ -1,11 +1,17 @@
 /**
  * Helper: apply a `CommandResult` to the calling socket and to the live
- * Socket.io server. Emits the caller reply (if any), then dispatches the
- * lifecycle effects via the existing `applyEffects`.
+ * Socket.io server.
  *
- * The split — reply through `socket`, effects through `io` — mirrors
- * `socket.emit(...)` vs `io.to(rooms).emit(...)`: the caller gets a direct
- * acknowledgement, peers see broadcasts.
+ * Sequence:
+ *   1. Emit reply to caller (if any and not silent)
+ *   2. Apply `callerJoins` — caller socket joins these rooms
+ *   3. Dispatch effects via the existing `applyEffects`
+ *   4. Apply `callerLeaves` — caller socket leaves these rooms
+ *
+ * Joins happen before effects so a `ticket:new` ack lands the caller in
+ * the ticket room before downstream broadcasts fire. Leaves happen after
+ * effects so a `ticket:transfer` (same-dept) re-broadcast can still reach
+ * the support socket before it leaves the room.
  */
 
 import type { Server, Socket } from 'socket.io';
@@ -21,7 +27,16 @@ export function applyCommandResult(socket: Socket, io: Server, result: CommandRe
       socket.emit(reply.event, reply.payload);
     }
   }
+
+  if (result.callerJoins) {
+    for (const room of result.callerJoins) socket.join(room);
+  }
+
   if (result.effects.length > 0) {
     applyEffects(io, result.effects);
+  }
+
+  if (result.callerLeaves) {
+    for (const room of result.callerLeaves) socket.leave(room);
   }
 }

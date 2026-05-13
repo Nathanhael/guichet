@@ -14,6 +14,7 @@
 import type { Server } from 'socket.io';
 import type { UserActor } from '../../services/auth/index.js';
 import type { MessageLifecycle } from '../../services/messageLifecycle/index.js';
+import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import type { Effect } from '../../services/ticketLifecycle/types.js';
 
 export interface MessageAttachment {
@@ -21,6 +22,11 @@ export interface MessageAttachment {
   name: string;
   mimeType: string;
   size: number;
+}
+
+export interface TicketReference {
+  label: string;
+  value: string;
 }
 
 /**
@@ -65,6 +71,38 @@ export type SocketCommand =
       ticketId: string;
       messageId: string;
       emoji: string;
+    }
+  | {
+      type: 'ticket:new';
+      partnerId: string;
+      actor: UserActor;
+      dept: string;
+      agentLang: string;
+      references?: TicketReference[];
+      text?: string;
+      mediaUrl?: string;
+    }
+  | {
+      type: 'ticket:close';
+      partnerId: string;
+      actor: UserActor;
+      ticketId: string;
+      closingNotes?: string;
+    }
+  | {
+      type: 'ticket:transfer';
+      partnerId: string;
+      actor: UserActor;
+      ticketId: string;
+      departmentId?: string;
+      note?: string;
+    }
+  | {
+      type: 'ticket:labels:update';
+      partnerId: string;
+      actor: UserActor;
+      ticketId: string;
+      labels: string[];
     };
 
 /**
@@ -82,18 +120,24 @@ export interface CommandResult {
   reply?: CommandReply;
   /** Lifecycle effects to dispatch through `applyEffects`. */
   effects: Effect[];
+  /** Rooms the calling socket should join after a successful dispatch. */
+  callerJoins?: string[];
+  /** Rooms the calling socket should leave after a successful dispatch. */
+  callerLeaves?: string[];
 }
 
 /**
  * Dependencies the bus needs at construction time.
  *
- * - `messageLifecycle`: the message domain lifecycle (send/edit/delete/react)
- * - `io`: needed for one read — collecting viewer languages from sockets
- *   already in the ticket room (AI translation prewarm). Tests provide a
- *   minimal fake with `sockets.sockets.values()`.
+ * - `messageLifecycle`: message-domain lifecycle (send/edit/delete/react)
+ * - `ticketLifecycle`: ticket-domain lifecycle (create/close/transfer/returnToQueue)
+ * - `io`: needed for two reads — collecting viewer languages from sockets in
+ *   the ticket room (AI translation prewarm) and broadcasting from the
+ *   labels write. Tests provide a minimal fake.
  */
 export interface CommandBusDeps {
   messageLifecycle: MessageLifecycle;
+  ticketLifecycle: TicketLifecycle;
   io: Server;
 }
 
