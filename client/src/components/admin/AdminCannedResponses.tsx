@@ -24,8 +24,12 @@ interface CannedResponse {
   createdAt: string;
 }
 
-const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
-const INPUT = 'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+import { CARD, INPUT_FULL as INPUT } from './adminStyles';
+
+// Panel-local: TEXTAREA + LABEL + TAB_* are CannedResponses-specific surfaces.
+// ICON_BTN / PRIMARY_BTN / SECONDARY_BTN / COL_HEAD intentionally retained
+// locally because they diverge from canonical (different opacity, padding,
+// or alignment); reconcile in a design follow-up rather than mass-rewriting.
 const TEXTAREA = 'w-full px-3 py-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)] resize-y';
 const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
 const LABEL = 'text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block';

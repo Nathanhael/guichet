@@ -5,12 +5,12 @@ import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
 import { usePartner } from '../../hooks/usePartner';
 
+import { CARD, INPUT, COL_HEAD } from './adminStyles';
+
 const LIMIT = 25;
 
-const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
-const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+// Panel-local: native <select> styling, no shared equivalent yet.
 const SELECT = 'h-9 pl-3 pr-8 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent hover:border-[var(--color-border)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer';
-const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 const COL_HEAD_SORTABLE = `${COL_HEAD} cursor-pointer select-none hover:text-[var(--color-ink)]`;
 
 type SortKey = 'created' | 'duration' | 'rating';
