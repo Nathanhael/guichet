@@ -36,7 +36,11 @@ export interface RegisterSocketHandlersDeps {
 
 export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersDeps) {
   ioInstance = io;
-  const bus = createCommandBus({ messageLifecycle: deps.messageLifecycle, io });
+  const bus = createCommandBus({
+    messageLifecycle: deps.messageLifecycle,
+    ticketLifecycle: deps.lifecycle,
+    io,
+  });
   const ctx: HandlerContext = {
     io,
     socketTickets,
