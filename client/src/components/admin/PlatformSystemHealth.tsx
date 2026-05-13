@@ -23,16 +23,13 @@ type ChainVerifyRecord = {
   error?: string;
 };
 
-import { CARD } from './adminStyles';
+import { CARD, PRIMARY_BTN, SECONDARY_BTN } from './adminStyles';
 
-// Panel-local: SECTION_H is unique; FIELD_LABEL drops mb and uses
-// font-semibold (vs canonical font-medium); PRIMARY/SECONDARY_BTN use
-// opacity-50 / px-4 / no disabled — diverges from canonical, reconcile
-// in a design follow-up.
+// Panel-local: SECTION_H is unique to this page; FIELD_LABEL drops mb and
+// uses font-semibold for tight inline-stat headers. Kept local because both
+// genuinely differ from the canonical idiom rather than drifting from it.
 const SECTION_H = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-3';
 const FIELD_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
-const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
-const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors';
 
 function csvField(v: string | number | boolean | null | undefined): string {
   const s = v === null || v === undefined ? '' : String(v);
