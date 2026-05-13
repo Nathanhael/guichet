@@ -131,9 +131,11 @@ export interface CommandResult {
  *
  * - `messageLifecycle`: message-domain lifecycle (send/edit/delete/react)
  * - `ticketLifecycle`: ticket-domain lifecycle (create/close/transfer/returnToQueue)
- * - `io`: needed for two reads — collecting viewer languages from sockets in
- *   the ticket room (AI translation prewarm) and broadcasting from the
- *   labels write. Tests provide a minimal fake.
+ * - `io`: used by the message-domain dispatcher to collect viewer
+ *   languages from sockets in the ticket room (AI translation prewarm on
+ *   `message:send`). Ticket-domain broadcasts flow through `Effect`s
+ *   handled by `applyEffects`, so they do not need `io` here. Tests
+ *   provide a minimal fake.
  */
 export interface CommandBusDeps {
   messageLifecycle: MessageLifecycle;
