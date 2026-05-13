@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+import { CARD, INPUT, COL_HEAD, SECONDARY_BTN } from './adminStyles';
 
 const LIMIT = 50;
 const DEBOUNCE_MS = 500;
@@ -35,13 +36,6 @@ interface ArchivedTicket {
   closedAt: string | null;
   archivedAt: string;
 }
-
-import { CARD, INPUT } from './adminStyles';
-
-// Panel-local: COL_HEAD omits `text-left`; SECONDARY_BTN uses px-4 not px-3.
-// Diverges from canonical — reconcile in a design follow-up.
-const COL_HEAD = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
-const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
 
 function usePartnerList() {
   const { data } = trpc.platform.listPartners.useQuery();

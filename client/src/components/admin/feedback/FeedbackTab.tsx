@@ -2,18 +2,21 @@ import { useState } from 'react';
 import { Check, ChevronDown, Inbox } from 'lucide-react';
 import { Skeleton } from '../DashboardHelpers';
 import Avatar from '../../ui/Avatar';
+import Toast from '../../Toast';
 import { trpc } from '../../../utils/trpc';
 import { useT } from '../../../i18n';
+import { usePanelMutations } from '../../../hooks/usePanelMutations';
 
 export default function FeedbackTab() {
   const t = useT();
   const [showDismissed, setShowDismissed] = useState(false);
 
   const utils = trpc.useUtils();
+  const { toast, setToast, defaults } = usePanelMutations();
   const feedbackQuery = trpc.feedback.list.useQuery();
-  const markTreatedMutation = trpc.feedback.markTreated.useMutation({
-    onSuccess: () => utils.feedback.list.invalidate(),
-  });
+  const markTreatedMutation = trpc.feedback.markTreated.useMutation(
+    defaults({ invalidate: () => utils.feedback.list.invalidate() }),
+  );
 
   const feedback = feedbackQuery.data || [];
   const loading = feedbackQuery.isLoading;
@@ -113,6 +116,7 @@ export default function FeedbackTab() {
           )}
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

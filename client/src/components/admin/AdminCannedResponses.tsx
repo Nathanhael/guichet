@@ -5,9 +5,11 @@ import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText, AlertTria
 import ErrorBox from './ErrorBox';
 import FieldError from '../FieldError';
 import BionicText from '../BionicText';
+import Toast from '../Toast';
 import { cannedResponseCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useStoreShallow } from '../../store/useStore';
 import { usePartner } from '../../hooks/usePartner';
+import { usePanelMutations } from '../../hooks/usePanelMutations';
 
 type SupportedLang = 'nl' | 'fr' | 'en';
 const ALL_LANGS: SupportedLang[] = ['nl', 'fr', 'en'];
@@ -24,18 +26,19 @@ interface CannedResponse {
   createdAt: string;
 }
 
-import { CARD, INPUT_FULL as INPUT } from './adminStyles';
+import {
+  CARD,
+  INPUT_FULL as INPUT,
+  ICON_BTN,
+  COL_HEAD,
+  PRIMARY_BTN,
+  SECONDARY_BTN,
+} from './adminStyles';
 
-// Panel-local: TEXTAREA + LABEL + TAB_* are CannedResponses-specific surfaces.
-// ICON_BTN / PRIMARY_BTN / SECONDARY_BTN / COL_HEAD intentionally retained
-// locally because they diverge from canonical (different opacity, padding,
-// or alignment); reconcile in a design follow-up rather than mass-rewriting.
+// Panel-local: TEXTAREA + LABEL + TAB_* are CannedResponses-specific surfaces
+// not shared by other admin panels.
 const TEXTAREA = 'w-full px-3 py-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)] resize-y';
-const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
 const LABEL = 'text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block';
-const COL_HEAD = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
-const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
-const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors';
 const TAB_BTN = 'h-8 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] text-[12px] font-medium transition-colors';
 const TAB_ACTIVE = 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]';
 const TAB_INACTIVE = 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]';
@@ -86,40 +89,40 @@ export default function AdminCannedResponses() {
   const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery();
 
   const invalidate = () => utils.cannedResponse.list.invalidate();
+  const { toast, setToast, defaults } = usePanelMutations();
 
-  const createMutation = trpc.cannedResponse.create.useMutation({
-    onSuccess: () => {
-      setNewTitle('');
-      setNewBody('');
-      setNewDept('');
-      setNewShortcut('');
-      setNewSourceLang(initialSourceLang);
-      invalidate();
-    },
-  });
+  const createMutation = trpc.cannedResponse.create.useMutation(
+    defaults({
+      invalidate,
+      onSuccess: () => {
+        setNewTitle('');
+        setNewBody('');
+        setNewDept('');
+        setNewShortcut('');
+        setNewSourceLang(initialSourceLang);
+      },
+    }),
+  );
 
-  const updateMutation = trpc.cannedResponse.update.useMutation({
-    onSuccess: () => {
-      setEditingId(null);
-      invalidate();
-    },
-  });
+  const updateMutation = trpc.cannedResponse.update.useMutation(
+    defaults({ invalidate, onSuccess: () => setEditingId(null) }),
+  );
 
-  const deleteMutation = trpc.cannedResponse.delete.useMutation({
-    onSuccess: () => invalidate(),
-  });
+  const deleteMutation = trpc.cannedResponse.delete.useMutation(
+    defaults({ invalidate }),
+  );
 
-  const regenerateMutation = trpc.cannedResponse.regenerate.useMutation({
-    onSuccess: () => {
-      setRegeneratingPair(null);
-      invalidate();
-    },
-    onError: () => setRegeneratingPair(null),
-  });
+  const regenerateMutation = trpc.cannedResponse.regenerate.useMutation(
+    defaults({
+      invalidate,
+      onSuccess: () => setRegeneratingPair(null),
+      onError: () => setRegeneratingPair(null),
+    }),
+  );
 
-  const backfillMutation = trpc.cannedResponse.backfillUntranslated.useMutation({
-    onSuccess: () => invalidate(),
-  });
+  const backfillMutation = trpc.cannedResponse.backfillUntranslated.useMutation(
+    defaults({ invalidate }),
+  );
 
   const addResponse = () => {
     const errors = validateForm(cannedResponseCreateSchema, {
@@ -622,6 +625,7 @@ export default function AdminCannedResponses() {
           {t(responses.length === 1 ? 'canned_response_count_singular' : 'canned_response_count_plural').replace('{count}', String(responses.length))}
         </div>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
