@@ -59,7 +59,6 @@ const PLATFORM_ACTIONS = [
   'security.mfa_recovery_codes_regenerated',
   'security.user_unlocked_by_admin',
   // content
-  'kb.created',
   'label.created',
   // partner
   'partner.created',

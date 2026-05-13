@@ -50,18 +50,6 @@ Client access: `trpc.<router>.<procedure>`
 | `regenerate` | mutation | partnerAdmin | Regenerate AI translations for a canned response |
 | `backfillUntranslated` | mutation | partnerAdmin | Bulk-backfill missing translations across the canned-response set |
 
-## kb
-
-| Procedure | Type | Auth | Description |
-|-----------|------|------|-------------|
-| `list` | query | partnerScoped | List KB articles for the current partner (gated by the `knowledge_base` feature flag) |
-| `search` | query | partnerScoped | Full-text keyword search across article title and body |
-| `aiSearch` | query | partnerScoped | AI-powered question answering with article ranking |
-| `getById` | query | partnerScoped | Get a single KB article by ID |
-| `create` | mutation | partnerAdmin | Create a new KB article |
-| `update` | mutation | partnerAdmin | Update an existing KB article |
-| `delete` | mutation | partnerAdmin | Delete a KB article |
-
 ## label
 
 | Procedure | Type | Auth | Description |

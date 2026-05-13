@@ -10,7 +10,6 @@ import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform/index.js';
 import { partnerRouter } from './routers/partner/index.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
-import { kbRouter } from './routers/kb.js';
 import { aiRouter } from './routers/ai.js';
 import { statusRouter } from './routers/status.js';
 import { linkPreviewRouter } from './routers/linkPreview.js';
@@ -22,7 +21,6 @@ export const appRouter = router({
   status: statusRouter,
   ai: aiRouter,
   cannedResponse: cannedResponseRouter,
-  kb: kbRouter,
   label: labelRouter,
   ticket: ticketRouter,
   message: messageRouter,

@@ -106,8 +106,6 @@ export function formatAuditDetails(log: AuditLog, t: T): string {
       });
 
     // Content
-    case 'kb.created':
-      return interp(tt('kb_created'), { title: String(m.title || '-') });
     case 'label.created':
       return interp(tt('label_created'), { name: String(m.name || '-') });
 

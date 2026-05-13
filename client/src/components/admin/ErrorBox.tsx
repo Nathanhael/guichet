@@ -1,7 +1,5 @@
 /**
  * Shared error display component for admin views.
- * Replaces duplicated error box markup across AdminKnowledgeBase,
- * AdminCannedResponses, AdminWebhooks, and AdminLabels.
  */
 export default function ErrorBox({ error }: { error?: string | null }) {
   if (!error) return null;

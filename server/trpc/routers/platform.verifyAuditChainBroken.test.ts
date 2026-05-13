@@ -115,10 +115,6 @@ vi.mock('../../config.js', () => ({
   default: { JWT_SECRET: 'test-secret-key-that-is-long-enough-for-hs256' },
 }));
 
-vi.mock('../../constants.js', () => ({
-  DISABLED_FEATURES: [],
-}));
-
 import { platformAuditRouter } from './platform/audit.js';
 
 type CallerCtx = Parameters<typeof platformAuditRouter.createCaller>[0];

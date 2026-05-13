@@ -42,12 +42,16 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 - **Revoke Sessions**: Force sign-out all active sessions (and refresh tokens) for a user.
 - **Global Search**: Search users across every tenant from one place. User identity itself is managed in Azure — Guichet shows the SSO-resolved view; create/edit/delete happens in Entra.
 
+### SSO Tab
+- **Group Mappings**: Configure Azure group → role/department mappings per partner. Drives auto-provisioning during SSO callback.
+
+### AI Security Tab
+- **Per-partner AI hardening**: Audit verbosity (hash / metadata / full), PII redaction toggles, and provider-credential rotation status.
+
 ### Health Tab
 - **Live Metrics**: Real-time monitoring of Postgres active connections and Redis memory usage.
 - **GDPR Monitoring**: View the last-run time and success status of the automated data purge.
-
-### Config Tab
-- **System settings**: Global toggles and tuning parameters that apply to every partner.
+- **Tripwires**: `chainBroken`, `chainStale`, `slaBreachBurst`, and missing/failed GDPR purges surface here with live socket-push invalidation.
 
 ### Audit Log
 - **Traceability**: Track every administrative change with granular `from -> to` diffs.
@@ -77,7 +81,7 @@ Partner Admins use the **AdminView** to manage their local workspace. The defaul
 - **Canned Responses Tab**: Create, edit, and delete response templates for support agents. Each response has a title, body, optional shortcut key, and optional category. With AI translation enabled, canned responses auto-translate to nl/en/fr.
 - **Feedback Tab**: Review in-app user feedback submitted via the feedback modal.
 
-Tabs that have shipped at the backend level but are currently disabled in the AdminView UI (`DISABLED_FEATURES` in `client/src/constants.ts`): **Knowledge Base**, **Webhooks**. The legacy **Alerts** (topic-clustering) and **Stats** tabs were removed entirely — analytics moved into the Dashboard tab.
+The legacy **Alerts** (topic-clustering), **Stats**, and **Knowledge Base** tabs were removed — analytics moved into the Dashboard tab.
 
 ---
 
