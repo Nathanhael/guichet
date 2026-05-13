@@ -23,7 +23,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     }
     try {
       const actor = socketActor(socket);
-      if (!actor) return;
+      if (!actor) {
+        logger.warn({ socketId: socket.id, userId: socket.data.userId }, '[ticket:new] rejected — no partner context');
+        return;
+      }
 
       const result = await ctx.bus.dispatch(
         {

@@ -73,6 +73,10 @@ async function dispatchNew(
   cmd: Extract<SocketCommand, { type: 'ticket:new' }>,
 ): Promise<CommandResult> {
   if (!cmd.agentLang || !cmd.dept) {
+    logger.warn(
+      { partnerId: cmd.partnerId, userId: cmd.actor.userId, agentLang: !!cmd.agentLang, dept: !!cmd.dept },
+      '[ticket:new] rejected — missing required fields',
+    );
     return errorReply('Missing required fields');
   }
 
@@ -89,8 +93,13 @@ async function dispatchNew(
   if (!result.ok) {
     switch (result.code) {
       case 'NOT_AUTHORIZED':
+        logger.warn(
+          { partnerId: cmd.partnerId, userId: cmd.actor.userId, role: cmd.actor.role },
+          '[ticket:new] rejected — not an agent',
+        );
         return errorReply('Only agents can create tickets');
       case 'PARTNER_NOT_ACTIVE':
+        logger.warn({ partnerId: cmd.partnerId }, '[ticket:new] rejected — partner inactive');
         return errorReply('Partner is currently inactive.');
       case 'BUSINESS_HOURS_CLOSED': {
         // Re-evaluate the status so the caller sees the same shape the
@@ -101,6 +110,10 @@ async function dispatchNew(
           partnerRow
             ? { businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null }
             : undefined,
+        );
+        logger.warn(
+          { partnerId: cmd.partnerId, nextOpen: hoursStatus.nextOpenAt },
+          '[ticket:new] rejected — business hours closed',
         );
         return {
           reply: {
@@ -115,6 +128,7 @@ async function dispatchNew(
         };
       }
       case 'INVALID_MEDIA_URL':
+        logger.warn({ partnerId: cmd.partnerId, mediaUrl: cmd.mediaUrl }, '[ticket:new] rejected — invalid media URL');
         return errorReply('Invalid media URL');
       case 'DUPLICATE_TICKET':
         return errorReply('You already have an open ticket');
@@ -124,6 +138,11 @@ async function dispatchNew(
         return errorReply('Failed to create ticket');
     }
   }
+
+  logger.debug(
+    { partnerId: cmd.partnerId, userId: cmd.actor.userId, dept: cmd.dept, ticketId: result.data.ticket.id },
+    '[ticket:new] accepted — ticket created',
+  );
 
   return {
     reply: {
