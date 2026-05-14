@@ -86,73 +86,9 @@ conductor/
 # Git hooks (solo project)
 .husky/
 
-# E2E testing & testing config — local only
-testing/
-
-# Unit/integration tests — local only by default; allowlist what ships
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-**/*.spec.tsx
-**/vitest.config.*
-
-# --- Test allowlist (ships to origin) ---
-# Server unit tests (co-located)
-!server/services/*.test.ts
-!server/services/ai/*.test.ts
-!server/services/availability/__tests__/*.test.ts
-!server/services/auth/*.test.ts
-!server/services/ticketLifecycle/*.test.ts
-!server/services/messageLifecycle/*.test.ts
-!server/services/moderator/*.test.ts
-!server/services/dashboard/*.test.ts
-!server/socket/*.test.ts
-!server/socket/handlers/*.test.ts
-!server/socket/commandBus/*.test.ts
-!server/middleware/*.test.ts
-!server/routes/*.test.ts
-!server/trpc/routers/*.test.ts
-!server/trpc/routers/platform/*.test.ts
-!server/utils/*.test.ts
-!server/scripts/*.test.ts
-
-# Server cross-cutting integration tests
-!server/__integration__/**/*.test.ts
-
-# Server route/router/service tests under __tests__/ (mirrors source tree depth)
-!server/__tests__/**/*.test.ts
-
-# Server lifecycle test substrate (PGLite-based; ships with the suite)
-!server/test/**/*.ts
-
-# E2E tests (Playwright)
-!testing/
-!testing/e2e/**/*.spec.ts
-
-# Client behavioral tests (curated)
-!client/src/utils/__tests__/notifications.test.ts
-!client/src/utils/__tests__/auditFormat.test.ts
-!client/src/hooks/useComposeAiImprove.test.ts
-!client/src/hooks/useComposeAttachments.test.ts
-!client/src/hooks/useComposeEditor.test.tsx
-!client/src/hooks/useComposeLinkPreview.test.ts
-!client/src/hooks/useKeyboardShortcuts.test.ts
-!client/src/hooks/usePanelMutations.test.ts
-!client/src/hooks/useResizableSidebar.test.ts
-!client/src/store/__tests__/sliceReset.test.ts
-!client/src/components/ui/__tests__/FormModal.test.tsx
-!client/src/components/ui/__tests__/FormModal.TypedConfirm.test.tsx
-!client/src/components/chat/__tests__/Message.test.tsx
-!client/src/components/chat/__tests__/Message.lazy.test.tsx
-!client/src/components/chat/__tests__/Message.kind.test.tsx
-!client/src/components/__tests__/CannedResponsePicker.test.tsx
-!client/src/components/admin/__tests__/AdminCannedResponses.test.tsx
-
-# Test infra (re-tracked)
-!server/vitest.config.ts
-!playwright.config.ts
-!scripts/ci.ps1
-!client/src/test/
+# Tests + testing/ config ship to origin alongside source.
+# Generated test artifacts are excluded by their own rules above
+# (e2e/playwright-report/, test-results/, client/test-results/).
 
 # Video recordings
 docs/videos/
