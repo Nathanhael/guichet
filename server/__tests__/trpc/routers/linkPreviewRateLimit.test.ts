@@ -10,7 +10,7 @@ import path from 'path';
  * hosts via the server's egress.
  *
  * Matches the source-inspection pattern used across this repo
- * (drizzleJournal, ssoGuestB2b, ssoInviteClaim, inviteCleanup).
+ * (drizzleJournal, ssoInviteClaim).
  */
 describe('linkPreview per-user rate limit (M1)', () => {
   const src = fs.readFileSync(

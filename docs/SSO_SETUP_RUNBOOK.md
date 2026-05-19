@@ -103,7 +103,7 @@ setup needs more work before SSO will work.
 
 ## 2. Per-partner onboarding
 
-For each new business unit (Acme, PXS, Multipool, ...).
+For each new business unit.
 
 ### 2.1 Create the partner row
 
@@ -116,10 +116,10 @@ in step 2.3.
 One group per role tier the partner needs. Convention: prefix with `Partner-`
 so the SSO panel listing stays scannable.
 
-CLI (replace `<name>` with the partner slug, e.g. `acme`):
+CLI (set `$slug` to the partner slug from §2.1):
 
 ```powershell
-$slug = "acme"
+$slug = "<partner-slug>"
 foreach ($role in @("Admins","Support","Agents")) {
   $id = az ad group create `
     --display-name "Partner-$slug-$role" `
@@ -144,7 +144,7 @@ PlatformView → **SSO** tab → GroupMappingsPanel → add one row per group:
 
 The role priority logic in `routes/sso.ts:420` resolves to the **highest role
 across all matched groups** per partner (admin > support > agent), so a user in
-both `Partner-Acme-Support` and `Partner-Acme-Agents` lands as support.
+both `Partner-<slug>-Support` and `Partner-<slug>-Agents` lands as support.
 
 ### 2.4 Customer admin self-service
 

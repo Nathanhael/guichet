@@ -14,7 +14,7 @@ import { join } from 'path';
  *   - delegating each row to `lifecycle.reclaim()`
  *   - per-ticket try/catch so one bad row can't starve the rest
  *
- * Pattern matches drizzleJournal / ssoGuestB2b / mailConfigEncryption.
+ * Pattern matches drizzleJournal.
  */
 const source = readFileSync(
   join(__dirname, '../../services/ticketReclaim.ts'),

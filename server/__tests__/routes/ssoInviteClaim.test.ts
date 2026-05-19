@@ -13,8 +13,8 @@ import path from 'path';
  * that window to INVITE_TTL_DAYS and deletes the stale row on expiry rather
  * than linking.
  *
- * We match the `ssoAuditTrim.test.ts` / `ssoGuestB2b.test.ts` pattern of regex
- * assertions on the sso.ts source — no live Azure / DB stack required.
+ * We match the `ssoAuditTrim.test.ts` pattern of regex assertions on the
+ * sso.ts source — no live Azure / DB stack required.
  */
 describe('SSO invite claim bounded TTL window', () => {
   const ssoSource = fs.readFileSync(
