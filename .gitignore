@@ -56,12 +56,6 @@ server/uploads/*
 .agents/
 .claude/
 
-# E2E & test artifacts
-e2e/playwright-report/
-e2e/test-results/
-test-results/
-client/test-results/
-
 # AI tooling
 .superpowers/
 .aider*
@@ -79,10 +73,6 @@ conductor/
 # Git hooks (solo project)
 .husky/
 
-# Tests + testing/ config ship to origin alongside source.
-# Generated test artifacts are excluded by their own rules above
-# (e2e/playwright-report/, test-results/, client/test-results/).
-
 # Video recordings
 docs/videos/
 
@@ -90,9 +80,6 @@ gha-creds-*.json
 
 # Git worktrees
 .worktrees/
-
-# Playwright CLI cache
-.playwright-cli/
 
 # Root-level working artifacts (screenshots, prompt yamls from AI tooling)
 /*.png
