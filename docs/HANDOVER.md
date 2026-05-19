@@ -50,9 +50,7 @@ Things that look weird until you know why:
 | Soft Product design tokens (no hex literals in components) | Single source for theming, dark mode, accessibility modes | `docs/SOFT_PRODUCT_DESIGN_SPEC.md`, `client/src/index.css` |
 | Multi-tenant guard at CI level | `scripts/check-trpc-tenant-isolation.mjs` blocks non-allowlisted client-supplied `partnerId` | `scripts/ci.ps1` step `tenant-isolation-guard` |
 | Per-partner AI verbosity (hash / metadata / full) | Worker-data AI feature with EU AI Act + CCT 39 implications | `docs/AI_ACT_AUDIT.md`, `docs/WORKS_COUNCIL_DISCLOSURE.md` |
-| AOAI region target `francecentral` for prod, `swedencentral` for trial | 9/10 trial resources are in francecentral; sweden was a quota workaround for now-deprecated gpt-5 models | `docs/AZURE_CUTOVER_RUNBOOK.md` `AOAI quota requests` |
-| AzureBlob storage for uploads (prod) / local disk (dev) | Single `storage.ts` adapter, env-controlled | `server/services/storage.ts` |
-| Squash Drizzle migrations only at prod cutover | Dev keeps full history; cutover collapses to `0000` against a fresh DB | `docs/AZURE_CUTOVER_RUNBOOK.md` |
+| Storage adapter abstracts uploads | Single `storage.ts` adapter, env-controlled. Pilot uses local disk inside Docker; the AzureBlob branch exists in code but is unused. | `server/services/storage.ts` |
 
 If you find yourself wanting to "fix" any of these — read the linked doc first. Most are load-bearing.
 
@@ -79,7 +77,7 @@ Stages (lead-time critical path is corp IT app registration):
 7. First login → operator auto-created → create the first partner → map its Azure group via PlatformView → Group Mappings.
 8. `npm run db:backup` on cron. Daily. 10-keep retention is built in.
 
-Full Azure-resident production cutover is documented separately in `docs/AZURE_CUTOVER_RUNBOOK.md`. It is **not** the pilot path.
+Azure is used **for Entra SSO only** — no Container Apps, no AOAI, no Blob, no Postgres Flex. If a full Azure-resident production cutover ever becomes a goal, this needs a new runbook; the previous one was deleted as misleading.
 
 ---
 
@@ -113,9 +111,7 @@ Until that's done, the only known in-flight tracks are:
 | Resource | Location |
 |---|---|
 | Repo | `D:\Projects_Coding\guichet` (Windows dev box). **TODO (outgoing owner): GitHub repo URL + admin transfer plan.** |
-| Cross-project wiki | `D:\Projects_Coding\wiki` — `wiki/index.md` is the catalog. Worth syncing to the new owner. |
-| Azure trial subscription | **TODO (outgoing owner): subscription ID + tenant + whether it transfers or gets torn down.** |
-| AOAI trial resource | `swedencentral`, deployment name `gpt-4o`. Production target is a separate AOAI resource in `francecentral` — quota request lead time 5–7 days (`docs/AZURE_CUTOVER_RUNBOOK.md`). |
+| Azure tenant (Entra SSO) | **TODO (outgoing owner): tenant ID + app-registration name + secret-rotation owner.** Only Azure footprint in scope. |
 | DB backups | `server/backups/`, gzipped, 10-keep rotation. **TODO (outgoing owner): is there an off-host copy?** |
 | Secrets storage today | **TODO (outgoing owner): where the dev `.env` lives, where prod secrets will live (Key Vault? sealed env in repo? other?).** |
 | Domain / DNS | **TODO (outgoing owner): registrar + DNS controller for any production hostname.** |
@@ -156,18 +152,7 @@ Until that's done, the only known in-flight tracks are:
 
 ---
 
-## 10. Hard-won lessons (cross-project wiki)
-
-`D:\Projects_Coding\wiki\learnings\` has the post-mortems from earlier incidents. The ones that matter most for Guichet specifically:
-
-- `guichet-prod-readiness-sweep-2026-05-10` — what hardening landed in the Azure-readiness pass.
-- `guichet-azure-trial-deploy-gotchas` — quirks of the trial deployment (ACR Tasks blocked, intentional `NODE_ENV=development`, etc).
-
-Sync the wiki to the new owner; some of these patterns are referenced from code comments.
-
----
-
-## 11. Sign-off checklist
+## 10. Sign-off checklist
 
 Before the outgoing owner steps away:
 

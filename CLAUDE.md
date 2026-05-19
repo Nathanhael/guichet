@@ -249,7 +249,7 @@ guichet/
 │   ├── store/        # Zustand slices (auth, tickets, messages, ui, config, rating)
 │   ├── types/        # index.ts
 │   └── utils/        # trpc.ts, dateUtils, markdown, fileUtils, statusColors, etc.
-├── docs/             # AUDIT_RUNBOOK, BREAK_GLASS_RUNBOOK, SOFT_PRODUCT_DESIGN_SPEC, TECHNICAL, TENANT_IDENTITY_SPEC, SSO_SETUP_RUNBOOK, AWS/AZURE_DEPLOYMENT, superpowers/
+├── docs/             # AUDIT_RUNBOOK, BREAK_GLASS_RUNBOOK, SOFT_PRODUCT_DESIGN_SPEC, TECHNICAL, SSO_SETUP_RUNBOOK, AZURE_DEPLOYMENT, AI_ACT_AUDIT, HANDOVER, USER_GUIDE
 ├── testing/          # load/ (k6 scripts), nginx.conf
 └── scripts/ci.ps1    # Local CI runner
 ```
