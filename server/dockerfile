@@ -22,8 +22,10 @@ RUN apk upgrade --no-cache
 
 WORKDIR /app
 
-# Copy built node_modules and package files
-COPY --from=builder /app/node_modules ./node_modules
+# Copy built node_modules and package files. `--chown` so the runtime
+# `node` user can rename/write in node_modules without EACCES — required
+# for `npm install` / `npm update` inside the container.
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY package*.json ./
 
 # Copy source code with correct permissions
