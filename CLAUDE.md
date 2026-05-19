@@ -109,7 +109,7 @@ The platform operator is auto-created by the bootstrap service on server startup
 - `piiRedaction.ts` — Strips PII before sending prompts to providers
 - `promptCustomization.ts` — Per-partner prompt overrides
 - `cannedTranslation.ts` — Per-canned-response translation (admin-curated)
-- `bulkHistoryPrewarm.ts` — Bulk-prewarm Redis translation cache for an entire ticket history window on `support:join`. Concurrency-bounded (3) and budget-capped (8000ms); per-msg silent fail to client lazy fallback. Replaces the older msg-#1-only path. Pattern: `[[patterns/prewarm-with-timeout-budget]]` extended from per-message to per-window.
+- `bulkHistoryPrewarm.ts` — Bulk-prewarm Redis translation cache for an entire ticket history window on `support:join`. Concurrency-bounded (3) and budget-capped (8000ms); per-msg silent fail to client lazy fallback. Replaces the older msg-#1-only path.
 - `translateCache.ts` / `translateGuards.ts` — Translation caching + skip rules
 - `messageFormatter.ts` — Message formatting for AI context
 - `context.ts` — `AiContext` dependency injection (wired at boot)
