@@ -10,7 +10,7 @@ This document maps every AI capability shipped by Guichet against the Act's risk
 
 **Deployment context.** Guichet is an internal collaboration tool between two classes of worker employed by the same partner: *agents* (front-line employees who handle external customer matters in other channels) and *experts* (subject-matter specialists who answer agent queries inside Guichet). External end-users do not interact with Guichet directly. Every AI-touched message is exchanged between two workers of the same employer, which shifts the transparency analysis: the "natural person exposed to AI-generated content" in Art. 50(2) is always a workplace colleague, never a consumer. Worker-facing obligations (CCT 81, AI Act Annex III §4(b)) carry the weight; consumer-facing obligations (Art. 50(2) deepfake / synthetic content) carry less.
 
-All AI capabilities are server-side, multi-tenant, opt-in per partner via `partners.ai_config` and globally gated by `AI_ENABLED`. Provider abstraction in `server/services/ai/` (Azure OpenAI primary, OpenAI-compatible fallback). The supported actions enumerated in `server/services/ai/types.ts` (`AiAction`):
+All AI capabilities are server-side, multi-tenant, opt-in per partner via `partners.ai_config` and globally gated by `AI_ENABLED`. Provider abstraction in `server/services/ai/` exposes both an Azure OpenAI adapter and an OpenAI-compatible adapter; provider selection for the deployment is pending and EU-only data residency is a hard requirement. AI is currently disabled (`AI_ENABLED=false`). The supported actions enumerated in `server/services/ai/types.ts` (`AiAction`):
 
 | Action | What it does | Subject | Initiator | Decision authority |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@ All AI capabilities are server-side, multi-tenant, opt-in per partner via `partn
 | High-risk (Annex III) | **Conditional — §2.1** | Depends on how usage logs are used internally. |
 | Limited-risk / transparency (Art. 50) | **Yes — §2.2** | Generative + translation content delivered to a natural person (the end-user customer). |
 | Minimal-risk | Default | All other operational risk. |
-| GPAI / foundation-model obligations | Provider-side | Azure OpenAI / OpenAI provide model-card and systemic-risk attestations; we are a *deployer*, not a *provider*. |
+| GPAI / foundation-model obligations | Provider-side | Whichever EU-hosted upstream provider is selected supplies the model-card and systemic-risk attestations; we are a *deployer*, not a *provider*. |
 
 ### 2.1 High-risk conditional path — Annex III §4(b)
 
@@ -64,7 +64,7 @@ All AI capabilities are server-side, multi-tenant, opt-in per partner via `partn
 | Art. 5(1)(c) data minimisation | PII redaction enforced pre-prompt (`piiRedaction.ts`). Audit verbosity defaults to `metadata`, not `full`. |
 | Art. 13/14 information | Add AI-processing notice to privacy policy. Currently not present per partner template. **Gap.** |
 | Art. 22 automated decision-making | **N/A** — no AI feature produces a legal or similarly significant effect on the data subject without human review. |
-| Art. 28 processor terms | Azure OpenAI DPA in place; data residency is `francecentral` (verified, see memory `azure_openai_deployment.md`). |
+| Art. 28 processor terms | DPA to be executed with the selected EU-hosted provider before activation; EU-only data residency is a non-negotiable selection criterion. |
 | Art. 30 records of processing | Per-partner `ai_usage_log` retention 30 days, aggregated into `daily_ai_usage`. ROPA entry required at deployer level. |
 | Art. 32 security | Provider API keys encrypted at rest via `services/encryption.ts` (AES-GCM, `FIELD_ENCRYPTION_SECRET`). |
 | Art. 35 DPIA | **Recommended but not strictly required** under current scope. A DPIA covering combined effect of staff monitoring (CCT 81) + AI logging is advisable. |

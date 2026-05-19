@@ -21,7 +21,7 @@ AI-assisted features can be enabled per partner by an administrator. When enable
 | Ticket classification | Picks a category for an incoming ticket. | Routing aid only; the worker can re-classify. |
 | Canned-response match | Suggests the closest pre-written reply. | Worker chooses. |
 
-**Provider:** Azure OpenAI, region `francecentral` (EU). DPA in place. No data leaves the EU for these calls.
+**Provider:** an EU-hosted AI provider — selection pending. EU-only data residency is a hard requirement of the provider selection; a DPA will be executed with the chosen provider before AI features are activated. The selection will be presented to the works council before activation.
 
 **PII protection:** Email addresses, Belgian phone numbers, national-register numbers, and credit-card numbers are stripped from prompts before they reach the AI provider.
 

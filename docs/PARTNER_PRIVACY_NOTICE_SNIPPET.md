@@ -28,7 +28,7 @@ This is the **individual-worker information** required by CCT 81 §6 step 3 ("in
 >
 > **Rechtsgrond:** gerechtvaardigd belang van [PARTNER_NAAM] om interne communicatie efficiënt en kwalitatief te organiseren (art. 6 lid 1 sub f GDPR).
 >
-> **Provider:** Azure OpenAI van Microsoft, met data-residency in de EU (regio francecentral). Er is een verwerkersovereenkomst van kracht.
+> **Provider:** een in de EU gehoste AI-leverancier (nog te bepalen). De keuze van leverancier en regio wordt aan jou en aan het CPPT/CE meegedeeld vóór AI-functies worden ingeschakeld. Een verwerkersovereenkomst wordt afgesloten vóór activering; data verlaat de EU niet.
 >
 > **Bewaartermijn:** per-actie loggegevens worden maximaal 30 dagen bewaard, daarna omgezet in geaggregeerde tellingen zonder herleidbaarheid naar jou.
 >
@@ -58,7 +58,7 @@ This is the **individual-worker information** required by CCT 81 §6 step 3 ("in
 >
 > **Base légale :** intérêt légitime de [NOM_DU_PARTENAIRE] à organiser efficacement et qualitativement la communication interne (art. 6 §1 f RGPD).
 >
-> **Fournisseur :** Azure OpenAI de Microsoft, avec résidence des données dans l'UE (région francecentral). Un accord de sous-traitance est en vigueur.
+> **Fournisseur :** un fournisseur d'IA hébergé dans l'UE (à déterminer). Le choix du fournisseur et de la région vous sera communiqué, ainsi qu'au CPPT/CE, avant l'activation des fonctions d'IA. Un accord de sous-traitance sera conclu avant l'activation ; les données ne quittent pas l'UE.
 >
 > **Durée de conservation :** les données de journal par action sont conservées au maximum 30 jours, puis converties en comptages agrégés sans lien identifiable avec vous.
 >
@@ -88,7 +88,7 @@ This is the **individual-worker information** required by CCT 81 §6 step 3 ("in
 >
 > **Lawful basis:** legitimate interest of [PARTNER_NAME] in operating internal communication efficiently and consistently (GDPR Art. 6(1)(f)).
 >
-> **Provider:** Microsoft Azure OpenAI, with data residency in the EU (region francecentral). A data-processing agreement is in place.
+> **Provider:** an EU-hosted AI provider (to be selected). The choice of provider and region will be communicated to you and to the works council before AI features are switched on. A data-processing agreement will be executed before activation; data does not leave the EU.
 >
 > **Retention:** per-action log data is retained for at most 30 days, after which it is aggregated into counts that cannot be linked back to you.
 >
