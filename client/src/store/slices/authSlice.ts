@@ -17,10 +17,17 @@ export interface AuthSlice {
 /**
  * Orchestrate slice-owned resets on logout. Each slice exposes a `_reset*()`
  * method that resets the fields it owns; this function is the single
- * registry-style call site. Device preferences (dark mode, lang, a11y
- * toggles) are intentionally preserved by the uiSlice's reset implementation.
+ * registry-style call site.
  *
- * Adding a new slice? Add a `_resetXState()` to it and one line here.
+ * `uiSlice._resetUIState()` is narrow on purpose — clears transient session
+ * fields (agentStatus, lightbox, connectionStatus, prefsModifiedLocally) but
+ * preserves device prefs (theme, font size, a11y) so a shared device keeps
+ * its user's settings across logouts.
+ *
+ * Partner switching takes a different path (`setActiveMembershipId`) — does
+ * its own scoped reset, does NOT call this. Logout != switch.
+ *
+ * Adding a new slice? Add a `_resetXState()` and one line here.
  */
 function clearAllPartnerState(
   set: (partial: Partial<StoreState>) => void,
