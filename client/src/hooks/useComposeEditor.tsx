@@ -428,8 +428,7 @@ export function useComposeEditor(opts: ComposeEditorOptions): ComposeEditorHandl
   // pick it up. Imperatively patch the ProseMirror DOM and the
   // extension's stored options. View-Proxy throws if the view isn't
   // mounted yet (ComposeArea is lazy-loaded under Suspense), so wrap in
-  // try/catch and re-run on the editor's `create` event. See wiki:
-  // learnings/guichet-tiptap-view-proxy-throw.
+  // try/catch and re-run on the editor's `create` event.
   useEffect(() => {
     if (!editor) return;
     const apply = () => {

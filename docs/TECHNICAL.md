@@ -78,7 +78,7 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 
 ## 6a. Audit Trail Observability
 
-Guichet's audit log is a first-class operations surface, not a silent table. Implementation arc captured in `wiki/decisions/guichet-audit-trail-observability.md`; oncall response in `docs/AUDIT_RUNBOOK.md`.
+Guichet's audit log is a first-class operations surface, not a silent table. Oncall response is documented in `docs/AUDIT_RUNBOOK.md`.
 
 - **Platform Chain-Integrity Verify UI** (`PlatformSystemHealth`): Operator-triggered verify run (rate-limited 1 per 5 min per operator), server-persisted history table, CSV export for compliance attestation. Auto-scheduled daily via `services/chainVerifySchedule.ts`.
 - **Multi-Axis Filtering**: `targetType` dropdown, `targetId` search, date range, actor filter, partner filter. All combinable, all deep-linkable via URL params — a filtered view can be pasted into a ticket.
